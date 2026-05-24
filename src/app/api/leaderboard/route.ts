@@ -4,9 +4,10 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id) {
+  if (!session || !session.user || !session.user.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const { user } = session;
 
   const { searchParams } = new URL(request.url);
   const period = searchParams.get("period") || "all"; // all, monthly, weekly
@@ -97,8 +98,8 @@ export async function GET(request: NextRequest) {
   }
 
   // Get current user's stats — prefer period-filtered, fall back to all-time
-  const filteredUserEntry = filteredEntries.find((e) => e.userId === session.user.id);
-  const allTimeEntry = entries.find((e) => e.userId === session.user.id);
+  const filteredUserEntry = filteredEntries.find((e) => e.userId === user.id);
+  const allTimeEntry = entries.find((e) => e.userId === user.id);
   const currentUserEntry = filteredUserEntry ?? allTimeEntry;
 
   // Build response
