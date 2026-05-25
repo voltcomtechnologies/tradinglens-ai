@@ -192,9 +192,9 @@ async function main() {
     prisma.user.create({
       data: {
         email: "demo@tradinglens.com",
-        name: "Demo Trader",
+        name: "Demo Admin",
         password: hashedPassword,
-        role: "USER",
+        role: "ADMIN",
         status: "ACTIVE",
         profile: {
           create: {
