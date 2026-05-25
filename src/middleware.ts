@@ -1,38 +1,40 @@
-import NextAuth from "next-auth";
-import { authConfig } from "@/lib/auth.config";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-const { auth } = NextAuth(authConfig);
+// Next-Auth v5 session cookie names (JWE-encrypted, verified server-side)
+const SESSION_COOKIE_NAMES = [
+  "__Secure-authjs.session-token",  // production (HTTPS)
+  "authjs.session-token",           // development / preview
+];
 
-export default auth((req) => {
-  const { nextUrl } = req;
-  const isLoggedIn = !!req.auth;
-  const user = req.auth?.user;
+export default function middleware(request: NextRequest) {
+  const { nextUrl } = request;
   const pathname = nextUrl.pathname;
 
-  // Public routes
-  const isPublicRoute = ["/", "/auth/signin", "/auth/signup", "/auth/error", "/api/auth"].some((route) =>
-    pathname.startsWith(route)
-  );
+  // Allow public routes through
+  const isPublicRoute = [
+    "/",
+    "/auth/signin",
+    "/auth/signup",
+    "/auth/error",
+    "/api/auth",
+  ].some((route) => pathname.startsWith(route));
 
-  // API routes (except auth) should be handled by API auth
-  const isAuthApi = pathname.startsWith("/api/auth/");
-
-  if (isAuthApi) return NextResponse.next();
   if (isPublicRoute) return NextResponse.next();
 
-  // Require auth for protected routes
-  if (!isLoggedIn) {
-    return NextResponse.redirect(new URL("/auth/signin", nextUrl));
-  }
+  // Check for session cookie (any variant)
+  const hasSession = SESSION_COOKIE_NAMES.some(
+    (name) => request.cookies.get(name)?.value
+  );
 
-  // Admin route protection
-  if (pathname.startsWith("/admin") && user?.role !== "ADMIN") {
-    return NextResponse.redirect(new URL("/dashboard", nextUrl));
+  if (!hasSession) {
+    const signInUrl = new URL("/auth/signin", nextUrl);
+    signInUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(signInUrl);
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|public/).*)"],
