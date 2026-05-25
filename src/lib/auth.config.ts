@@ -2,7 +2,6 @@ import type { NextAuthConfig, DefaultSession } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import { z } from "zod";
 
 // Extend NextAuth types
 declare module "next-auth" {
@@ -21,10 +20,7 @@ declare module "next-auth/jwt" {
   }
 }
 
-const credentialsSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-});
+
 
 export const authConfig: NextAuthConfig = {
   session: { strategy: "jwt" },
@@ -44,7 +40,12 @@ export const authConfig: NextAuthConfig = {
         password: { label: "Password", type: "password" },
       },
       authorize: async (credentials) => {
-        const parsed = credentialsSchema.safeParse(credentials);
+        // Dynamic import zod — keeps it out of the Edge runtime bundle
+        const { z } = await import("zod");
+        const parsed = z.object({
+          email: z.string().email(),
+          password: z.string().min(6),
+        }).safeParse(credentials);
         if (!parsed.success) return null;
 
         // Dynamic import bcryptjs — keeps it out of the Edge runtime bundle
