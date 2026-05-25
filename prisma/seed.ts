@@ -25,6 +25,26 @@ const prisma = createPrismaClient();
 async function main() {
   console.log("🌱 Seeding database...");
 
+  // ── Clean existing seed data (idempotent) ──────────────────────
+  console.log("🧹 Cleaning existing data...");
+  await prisma.tradingJournal.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.leaderboardEntry.deleteMany();
+  await prisma.quizResult.deleteMany();
+  await prisma.quiz.deleteMany();
+  await prisma.pDFMaterial.deleteMany();
+  await prisma.courseModule.deleteMany();
+  await prisma.courseProgress.deleteMany();
+  await prisma.course.deleteMany();
+  await prisma.profile.deleteMany();
+  await prisma.account.deleteMany();
+  await prisma.session.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.subscription.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.subscriptionPlan.deleteMany();
+  console.log("  ✅ Existing data cleaned");
+
   // ── Subscription Plans ──────────────────────────────────────────
   const plans = await Promise.all([
     prisma.subscriptionPlan.create({
