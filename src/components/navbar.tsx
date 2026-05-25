@@ -123,7 +123,7 @@ export function Navbar({ user }: NavbarProps) {
                       </Link>
                       {user.role === "ADMIN" && (
                         <Link
-                          href="/admin"
+                          href="/dashboard/admin"
                           className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-muted transition-colors text-primary"
                           onClick={() => setUserMenuOpen(false)}
                         >
@@ -220,7 +220,7 @@ export function Navbar({ user }: NavbarProps) {
                   </Link>
                   {user.role === "ADMIN" && (
                     <Link
-                      href="/admin"
+                      href="/dashboard/admin"
                       onClick={() => setMobileOpen(false)}
                       className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-primary hover:bg-muted"
                     >

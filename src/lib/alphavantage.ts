@@ -62,6 +62,12 @@ const quoteCache = new Map<string, { data: ForexQuote; expiresAt: number }>();
 const candleCache = new Map<string, { data: DailyCandle[]; expiresAt: number }>();
 const CACHE_TTL = 60_000; // 60 seconds
 
+/** Clear all caches (useful for testing). */
+export function clearCache(): void {
+  quoteCache.clear();
+  candleCache.clear();
+}
+
 function getApiKey(): string {
   const key = process.env.ALPHA_VANTAGE_API_KEY;
   if (!key) throw new Error("ALPHA_VANTAGE_API_KEY is not configured");
