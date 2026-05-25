@@ -9,31 +9,48 @@ import {
   Clock,
   Maximize2,
   Minimize2,
-  Download,
-  Settings2,
+  Loader2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MAJOR_PAIRS } from "@/types";
+import type { MarketDataResponse } from "@/app/api/market/data/route";
 
-// Generate realistic-looking candle data
-function generateCandleData(count: number, basePrice = 1.0850) {
+// ── Fallback base prices for when the API is unavailable ──
+
+const FALLBACK_PRICES: Record<string, number> = {
+  EURUSD: 1.0850, GBPUSD: 1.2650, USDJPY: 151.50, USDCHF: 0.8820,
+  AUDUSD: 0.6520, USDCAD: 1.3580, NZDUSD: 0.5950, EURGBP: 0.8570,
+  EURJPY: 164.20, GBPJPY: 191.50, AUDJPY: 98.80, CHFJPY: 171.70,
+  EURAUD: 1.6640, GBPAUD: 1.9400, XAUUSD: 2335.00, XAGUSD: 29.50,
+};
+
+// ── Generate synthetic intraday candles (since free Alpha Vantage only has daily) ──
+
+function generateIntradayCandles(
+  dailyCandles: Array<{ time: string; open: number; high: number; low: number; close: number }>,
+  count: number,
+  fallbackBasePrice?: number
+) {
+  // Use the last daily candle as the base price for intraday generation
+  const lastDaily = dailyCandles[dailyCandles.length - 1];
+  const basePrice = lastDaily?.close ?? fallbackBasePrice ?? 1.0850;
+
   const data: Array<{ time: string; open: number; high: number; low: number; close: number }> = [];
   let currentPrice = basePrice;
   const now = new Date();
-  
+
   for (let i = count - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setMinutes(d.getMinutes() - i * 5);
-    
-    const change = (Math.random() - 0.48) * 0.002;
+
+    const change = (Math.random() - 0.48) * 0.0008;
     const open = currentPrice;
     const close = open + change;
-    const high = Math.max(open, close) + Math.random() * 0.001;
-    const low = Math.min(open, close) - Math.random() * 0.001;
-    
+    const high = Math.max(open, close) + Math.random() * 0.0004;
+    const low = Math.min(open, close) - Math.random() * 0.0004;
+
     currentPrice = close;
-    
+
     data.push({
       time: d.toISOString().slice(0, 19) + "Z",
       open: Number(open.toFixed(5)),
@@ -45,28 +62,7 @@ function generateCandleData(count: number, basePrice = 1.0850) {
   return data;
 }
 
-// Get a realistic base price for each currency pair
-function getPairBasePrice(symbol: string): number {
-  const prices: Record<string, number> = {
-    EURUSD: 1.0850,
-    GBPUSD: 1.2650,
-    USDJPY: 151.50,
-    USDCHF: 0.8820,
-    AUDUSD: 0.6520,
-    USDCAD: 1.3580,
-    NZDUSD: 0.5950,
-    EURGBP: 0.8570,
-    EURJPY: 164.20,
-    GBPJPY: 191.50,
-    AUDJPY: 98.80,
-    CHFJPY: 171.70,
-    EURAUD: 1.6640,
-    GBPAUD: 1.9400,
-    XAUUSD: 2335.00,
-    XAGUSD: 29.50,
-  };
-  return prices[symbol] ?? 1.0850;
-}
+// ── Indicators toggle config ──
 
 const INDICATORS = [
   { id: "rsi", label: "RSI", active: false },
@@ -80,23 +76,93 @@ export default function ChartLensPage() {
   const [selectedPair, setSelectedPair] = useState("EURUSD");
   const [selectedTimeframe, setSelectedTimeframe] = useState("1H");
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [candleData, setCandleData] = useState(() => generateCandleData(200));
+  const [candleData, setCandleData] = useState<Array<{ time: string; open: number; high: number; low: number; close: number }>>([]);
+  const [dailyCandles, setDailyCandles] = useState<Array<{ time: string; open: number; high: number; low: number; close: number }>>([]);
   const [currentPrice, setCurrentPrice] = useState(1.0850);
-  const [priceChange, setPriceChange] = useState(0.15);
+  const [bidPrice, setBidPrice] = useState<number | null>(null);
+  const [askPrice, setAskPrice] = useState<number | null>(null);
+  const [priceChange, setPriceChange] = useState(0);
   const [isPositive, setIsPositive] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [dataSource, setDataSource] = useState<"api" | "fallback">("fallback");
 
-  // Reset chart data when pair or timeframe changes
-  useEffect(() => {
-    const basePrice = getPairBasePrice(selectedPair) + (Math.random() - 0.5) * 0.01;
-    const count = selectedTimeframe === "1D" ? 100 : selectedTimeframe === "1H" ? 200 : 300;
-    setCandleData(generateCandleData(count, basePrice));
-    setCurrentPrice(basePrice);
-    setPriceChange(0);
-    setIsPositive(true);
-  }, [selectedPair, selectedTimeframe]);
+  // ── Fetch real market data from Alpha Vantage ──
 
-  // Simulate real-time price updates
+  const fetchMarketData = useCallback(async (symbol: string) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/market/data?symbol=${symbol}&candles=true`);
+      const data: MarketDataResponse = await res.json();
+
+      if (data.quote) {
+        setDataSource("api");
+        const rate = data.quote.exchangeRate;
+        setCurrentPrice(rate);
+        setBidPrice(data.quote.bidPrice);
+        setAskPrice(data.quote.askPrice);
+        setLastUpdated(data.quote.lastRefreshed);
+
+        const fallbackPrice = FALLBACK_PRICES[symbol] ?? rate;
+        setPriceChange(((rate - fallbackPrice) / fallbackPrice) * 100);
+        setIsPositive(rate >= fallbackPrice);
+      } else {
+        // Fallback to hardcoded prices
+        setDataSource("fallback");
+        const fallbackPrice = FALLBACK_PRICES[symbol] ?? 1.0850;
+        const jitter = (Math.random() - 0.5) * 0.005;
+        const price = fallbackPrice + jitter;
+        setCurrentPrice(Number(price.toFixed(5)));
+        setBidPrice(null);
+        setAskPrice(null);
+        setPriceChange((jitter / fallbackPrice) * 100);
+        setIsPositive(jitter >= 0);
+      }
+
+      const pairFallbackPrice = FALLBACK_PRICES[symbol] ?? 1.0850;
+
+      if (data.candles && data.candles.length > 0) {
+        setDailyCandles(data.candles);
+        // Generate intraday candles from the last daily close
+        const intraday = generateIntradayCandles(data.candles, 200, pairFallbackPrice);
+        setCandleData(intraday);
+      } else {
+        // Fallback: fully synthetic candles at the pair-specific base price
+        const generated = generateIntradayCandles([], 200, pairFallbackPrice);
+        setCandleData(generated);
+        setDailyCandles([]);
+      }
+    } catch {
+      setDataSource("fallback");
+      const fallbackPrice = FALLBACK_PRICES[symbol] ?? 1.0850;
+      setCurrentPrice(fallbackPrice);
+      setBidPrice(null);
+      setAskPrice(null);
+      setPriceChange(0);
+      setIsPositive(true);
+      setCandleData(generateIntradayCandles([], 200, fallbackPrice));
+      setDailyCandles([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Fetch data when pair changes
   useEffect(() => {
+    fetchMarketData(selectedPair);
+  }, [selectedPair, fetchMarketData]);
+
+  // Poll for price updates every 60 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchMarketData(selectedPair);
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, [selectedPair, fetchMarketData]);
+
+  // Simulate smooth price updates between API calls
+  useEffect(() => {
+    if (isLoading) return;
     const interval = setInterval(() => {
       setCandleData((prev) => {
         const last = prev[prev.length - 1];
@@ -116,18 +182,19 @@ export default function ChartLensPage() {
         };
 
         setCurrentPrice(newClose);
-        const basePrice = getPairBasePrice(selectedPair);
-        setPriceChange(((newClose - basePrice) / basePrice) * 100);
-        setIsPositive(newClose >= basePrice);
+        const fallbackPrice = FALLBACK_PRICES[selectedPair] ?? 1.0850;
+        setPriceChange(((newClose - fallbackPrice) / fallbackPrice) * 100);
+        setIsPositive(newClose >= fallbackPrice);
 
         return updated;
       });
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [selectedPair]);
+  }, [selectedPair, isLoading]);
 
-  // SVG chart rendering
+  // ── SVG Candlestick chart ──
+
   const renderCandleChart = useCallback(() => {
     if (!candleData.length || !chartContainerRef.current) return null;
 
@@ -194,7 +261,6 @@ export default function ChartLensPage() {
 
           return (
             <g key={i}>
-              {/* Wick */}
               <line
                 x1={x + candleWidth / 2}
                 y1={scaleY(d.high)}
@@ -203,7 +269,6 @@ export default function ChartLensPage() {
                 stroke={color}
                 strokeWidth="1"
               />
-              {/* Body */}
               <rect
                 x={x}
                 y={scaleY(Math.max(d.open, d.close))}
@@ -216,7 +281,7 @@ export default function ChartLensPage() {
           );
         })}
 
-        {/* Moving Average line */}
+        {/* Moving Average */}
         <path
           d={maValues
             .map((val, i) => {
@@ -262,7 +327,14 @@ export default function ChartLensPage() {
           <div className="p-2 rounded-lg bg-accent/10">
             <TrendingUp className="h-5 w-5 text-accent" />
           </div>
-          <h1 className="text-2xl font-bold">Chart Lens</h1>
+          <div>
+            <h1 className="text-2xl font-bold">Chart Lens</h1>
+          </div>
+          {dataSource === "api" && (
+            <span className="ml-auto text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
+              LIVE
+            </span>
+          )}
         </div>
         <p className="text-muted-foreground">
           Real-time forex charts with AI-powered pattern recognition and technical analysis.
@@ -278,19 +350,36 @@ export default function ChartLensPage() {
       >
         <div className="flex items-center gap-3">
           <span className="text-sm font-semibold">{selectedPair}</span>
-          <span className={cn("text-lg font-bold tabular-nums", isPositive ? "text-emerald-400" : "text-red-400")}>
-            {currentPrice.toFixed(5)}
-          </span>
-          <span className={cn("text-xs font-medium px-1.5 py-0.5 rounded", isPositive ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400")}>
-            {isPositive ? "+" : ""}{priceChange.toFixed(2)}%
-          </span>
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          ) : (
+            <>
+              <span className={cn("text-lg font-bold tabular-nums", isPositive ? "text-emerald-400" : "text-red-400")}>
+                {currentPrice.toFixed(5)}
+              </span>
+              <span className={cn("text-xs font-medium px-1.5 py-0.5 rounded", isPositive ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400")}>
+                {isPositive ? "+" : ""}{priceChange.toFixed(2)}%
+              </span>
+            </>
+          )}
         </div>
         <div className="hidden sm:flex items-center gap-4 text-xs text-muted-foreground">
-          <span>O: {candleData[candleData.length - 1]?.open.toFixed(5)}</span>
-          <span>H: {candleData[candleData.length - 1]?.high.toFixed(5)}</span>
-          <span>L: {candleData[candleData.length - 1]?.low.toFixed(5)}</span>
-          <span>C: {candleData[candleData.length - 1]?.close.toFixed(5)}</span>
+          <span>O: {candleData[candleData.length - 1]?.open.toFixed(5) ?? "—"}</span>
+          <span>H: {candleData[candleData.length - 1]?.high.toFixed(5) ?? "—"}</span>
+          <span>L: {candleData[candleData.length - 1]?.low.toFixed(5) ?? "—"}</span>
+          <span>C: {candleData[candleData.length - 1]?.close.toFixed(5) ?? "—"}</span>
+          {bidPrice != null && askPrice != null && (
+            <>
+              <span className="text-emerald-400/80">Bid: {bidPrice.toFixed(5)}</span>
+              <span className="text-red-400/80">Ask: {askPrice.toFixed(5)}</span>
+            </>
+          )}
         </div>
+        {lastUpdated && (
+          <span className="ml-auto hidden lg:block text-[10px] text-muted-foreground">
+            Updated: {new Date(lastUpdated).toLocaleTimeString()}
+          </span>
+        )}
       </motion.div>
 
       {/* Chart */}
@@ -333,10 +422,12 @@ export default function ChartLensPage() {
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <button className="p-1.5 rounded-lg hover:bg-muted transition-colors" title="Indicators">
-              <Settings2 className="h-4 w-4 text-muted-foreground" />
-            </button>
-            <button className="p-1.5 rounded-lg hover:bg-muted transition-colors" title="Refresh">
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mr-2" />}
+            <button
+              className="p-1.5 rounded-lg hover:bg-muted transition-colors"
+              title="Refresh"
+              onClick={() => fetchMarketData(selectedPair)}
+            >
               <RefreshCw className="h-4 w-4 text-muted-foreground" />
             </button>
             <button
@@ -356,23 +447,33 @@ export default function ChartLensPage() {
         {/* SVG Chart */}
         <div
           ref={chartContainerRef}
-          className={cn("w-full", isFullscreen ? "h-[calc(100vh-200px)]" : "h-[400px] lg:h-[500px]")}
+          className={cn("w-full relative", isFullscreen ? "h-[calc(100vh-200px)]" : "h-[400px] lg:h-[500px]")}
         >
           {renderCandleChart()}
-        </div>
 
-        {/* Overlay when empty */}
-        {!candleData.length && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-muted/30 to-background">
-            <div className="text-center">
-              <div className="p-4 rounded-xl bg-accent/10 mb-4 inline-block">
-                <BarChart3 className="h-12 w-12 text-accent/60" />
+          {/* Loading overlay */}
+          {isLoading && candleData.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center bg-card/60 backdrop-blur-sm">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">Fetching market data...</p>
               </div>
-              <h3 className="text-lg font-semibold mb-2">Loading Chart Data...</h3>
-              <p className="text-sm text-muted-foreground">Fetching real-time market data</p>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Empty state */}
+          {!isLoading && !candleData.length && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <div className="p-4 rounded-xl bg-accent/10 mb-4 inline-block">
+                  <BarChart3 className="h-12 w-12 text-accent/60" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">No Chart Data</h3>
+                <p className="text-sm text-muted-foreground">Select a pair and timeframe to begin</p>
+              </div>
+            </div>
+          )}
+        </div>
       </motion.div>
 
       {/* Indicators + Insights */}
@@ -401,6 +502,16 @@ export default function ChartLensPage() {
               </label>
             ))}
           </div>
+          {dailyCandles.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-border">
+              <p className="text-[10px] text-muted-foreground">
+                Daily candles: {dailyCandles.length} days
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {dailyCandles[0]?.time} — {dailyCandles[dailyCandles.length - 1]?.time}
+              </p>
+            </div>
+          )}
         </motion.div>
 
         {/* AI Insights */}
