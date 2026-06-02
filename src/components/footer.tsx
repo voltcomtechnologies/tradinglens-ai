@@ -22,7 +22,7 @@ export function Footer() {
               <img
                 src="/logo.png"
                 alt="TradingLens AI"
-                className="h-8 w-auto object-contain"
+                className="h-9 w-auto object-contain logo-enhance"
               />
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">

@@ -48,7 +48,7 @@ export function DashboardTopBar() {
             <img
               src="/logo.png"
               alt="TradingLens AI"
-              className="h-7 w-auto max-w-[140px] object-contain"
+              className="h-8 w-auto max-w-[140px] object-contain logo-enhance"
             />
           </Link>
         </div>

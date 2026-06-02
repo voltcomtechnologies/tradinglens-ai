@@ -19,7 +19,7 @@ export default function AuthLayout({
           <img
             src="/logo.png"
             alt="TradingLens AI"
-            className="h-10 w-auto max-w-[200px] object-contain"
+            className="h-11 w-auto max-w-[200px] object-contain logo-enhance"
           />
         </Link>
 

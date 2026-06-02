@@ -134,7 +134,7 @@ export function Navbar({ user }: NavbarProps) {
             <img
               src="/logo.png"
               alt="TradingLens AI"
-              className="h-9 w-auto object-contain"
+              className="h-10 w-auto object-contain logo-enhance"
             />
           </Link>
 

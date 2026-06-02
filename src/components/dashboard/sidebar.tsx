@@ -84,8 +84,8 @@ export function DashboardSidebar({ user, sidebarOpen, onToggle }: SidebarProps) 
               src="/logo.png"
               alt="TradingLens AI"
               className={cn(
-                "w-auto object-contain shrink-0 transition-all",
-                collapsed ? "h-6" : "h-8"
+                "w-auto object-contain shrink-0 transition-all logo-enhance",
+                collapsed ? "h-7" : "h-9"
               )}
             />
           </Link>

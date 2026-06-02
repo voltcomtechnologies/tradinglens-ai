@@ -181,6 +181,9 @@
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
   }
+  .logo-enhance {
+    filter: drop-shadow(0 0 4px rgba(255, 107, 0, 0.25)) brightness(1.08);
+  }
 }
 
 /* Custom scrollbar */
