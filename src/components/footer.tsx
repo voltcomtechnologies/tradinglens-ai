@@ -1,68 +1,118 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart3, Globe, MessageCircle, Briefcase, Mail } from "lucide-react";
+import {
+  BarChart3,
+  Globe,
+  MessageCircle,
+  Briefcase,
+  Mail,
+  ArrowUpRight,
+} from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="border-t border-border bg-card/50">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <footer className="relative border-t border-border/50 bg-card/30 backdrop-blur-sm">
+      {/* Top glow line */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           <div className="col-span-1 md:col-span-1">
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20">
                 <BarChart3 className="h-4 w-4 text-white" />
               </div>
-              <span className="text-lg font-bold gradient-text">TradingLens</span>
+              <span className="text-lg font-bold gradient-text tracking-tight">
+                TradingLens
+              </span>
             </Link>
-            <p className="text-sm text-muted-foreground">
-              AI-powered forex intelligence platform. Analyze, learn, and trade with confidence.
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              AI-powered forex intelligence platform. Analyze, learn, and trade
+              with confidence.
             </p>
           </div>
 
           <div>
-            <h3 className="font-semibold mb-3">Platform</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/lens/trading" className="hover:text-foreground transition-colors">Trading Lens</Link></li>
-              <li><Link href="/lens/chart" className="hover:text-foreground transition-colors">Chart Lens</Link></li>
-              <li><Link href="/lens/edu" className="hover:text-foreground transition-colors">Edu Lens</Link></li>
-              <li><Link href="/pricing" className="hover:text-foreground transition-colors">Pricing</Link></li>
+            <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-foreground/80">
+              Platform
+            </h3>
+            <ul className="space-y-2.5 text-sm text-muted-foreground">
+              {[
+                { href: "/lens/trading", label: "Trading Lens" },
+                { href: "/lens/chart", label: "Chart Lens" },
+                { href: "/lens/edu", label: "Edu Lens" },
+                { href: "/pricing", label: "Pricing" },
+              ].map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="group inline-flex items-center gap-1 hover:text-primary transition-colors"
+                  >
+                    {link.label}
+                    <ArrowUpRight className="h-3 w-3 opacity-0 -translate-y-0.5 translate-x-0.5 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
           <div>
-            <h3 className="font-semibold mb-3">Company</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/about" className="hover:text-foreground transition-colors">About</Link></li>
-              <li><Link href="/contact" className="hover:text-foreground transition-colors">Contact</Link></li>
-              <li><Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link></li>
-              <li><Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link></li>
+            <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-foreground/80">
+              Company
+            </h3>
+            <ul className="space-y-2.5 text-sm text-muted-foreground">
+              {[
+                { href: "/about", label: "About" },
+                { href: "/contact", label: "Contact" },
+                { href: "/privacy", label: "Privacy" },
+                { href: "/terms", label: "Terms" },
+              ].map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="group inline-flex items-center gap-1 hover:text-primary transition-colors"
+                  >
+                    {link.label}
+                    <ArrowUpRight className="h-3 w-3 opacity-0 -translate-y-0.5 translate-x-0.5 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
           <div>
-            <h3 className="font-semibold mb-3">Connect</h3>
+            <h3 className="font-semibold mb-4 text-sm uppercase tracking-wider text-foreground/80">
+              Connect
+            </h3>
             <div className="flex gap-3">
-              <a href="#" className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
-                <MessageCircle className="h-4 w-4" />
-              </a>
-              <a href="#" className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
-                <Globe className="h-4 w-4" />
-              </a>
-              <a href="#" className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
-                <Briefcase className="h-4 w-4" />
-              </a>
-              <a href="#" className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors">
-                <Mail className="h-4 w-4" />
-              </a>
+              {[
+                { icon: MessageCircle, label: "Community" },
+                { icon: Globe, label: "Website" },
+                { icon: Briefcase, label: "LinkedIn" },
+                { icon: Mail, label: "Email" },
+              ].map((item) => (
+                <a
+                  key={item.label}
+                  href="#"
+                  className="p-2.5 rounded-xl bg-muted/50 border border-border/50 hover:border-primary/30 hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all"
+                  aria-label={item.label}
+                >
+                  <item.icon className="h-4 w-4" />
+                </a>
+              ))}
             </div>
           </div>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-          <p> {new Date().getFullYear()} TradingLens AI. All rights reserved.</p>
+        <div className="mt-12 pt-8 border-t border-border/50 text-center text-sm text-muted-foreground">
+          <p>
+            &copy; {new Date().getFullYear()} TradingLens AI. All rights
+            reserved.
+          </p>
         </div>
       </div>
     </footer>
   );
 }
+
