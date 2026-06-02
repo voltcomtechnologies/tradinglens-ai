@@ -131,12 +131,11 @@ export function Navbar({ user }: NavbarProps) {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent glow-orange">
-              <BarChart3 className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-lg font-bold gradient-text tracking-tight">
-              TradingLens
-            </span>
+            <img
+              src="/logo.png"
+              alt="TradingLens AI"
+              className="h-9 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop Nav */}

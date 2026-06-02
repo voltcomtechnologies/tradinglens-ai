@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  BarChart3,
   BookOpen,
   Brain,
   LayoutDashboard,
@@ -81,15 +80,14 @@ export function DashboardSidebar({ user, sidebarOpen, onToggle }: SidebarProps) 
         {/* Logo */}
         <div className="flex h-16 items-center justify-between px-4 border-b border-border shrink-0">
           <Link href="/dashboard" className="flex items-center gap-2 group overflow-hidden">
-            <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
-              <BarChart3 className="h-4 w-4 text-white" />
-            </div>
-            <motion.span
-              animate={{ opacity: collapsed ? 0 : 1, width: collapsed ? 0 : "auto" }}
-              className="text-sm font-bold gradient-text whitespace-nowrap"
-            >
-              TradingLens
-            </motion.span>
+            <img
+              src="/logo.png"
+              alt="TradingLens AI"
+              className={cn(
+                "w-auto object-contain shrink-0 transition-all",
+                collapsed ? "h-6" : "h-8"
+              )}
+            />
           </Link>
           <button
             onClick={() => setCollapsed(!collapsed)}

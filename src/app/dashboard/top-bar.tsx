@@ -44,11 +44,12 @@ export function DashboardTopBar() {
               <Menu className="h-5 w-5 text-foreground" />
             )}
           </button>
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
-              <span className="text-[10px] font-bold text-white">T</span>
-            </div>
-            <span className="text-sm font-bold gradient-text">TradingLens</span>
+          <Link href="/dashboard" className="flex items-center">
+            <img
+              src="/logo.png"
+              alt="TradingLens AI"
+              className="h-7 w-auto max-w-[140px] object-contain"
+            />
           </Link>
         </div>
         <button className="relative p-2 rounded-lg hover:bg-muted transition-colors">

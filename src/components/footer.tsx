@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import {
-  BarChart3,
   Globe,
   MessageCircle,
   Briefcase,
@@ -20,12 +19,11 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
           <div className="col-span-1 md:col-span-1">
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20">
-                <BarChart3 className="h-4 w-4 text-white" />
-              </div>
-              <span className="text-lg font-bold gradient-text tracking-tight">
-                TradingLens
-              </span>
+              <img
+                src="/logo.png"
+                alt="TradingLens AI"
+                className="h-8 w-auto object-contain"
+              />
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
               AI-powered forex intelligence platform. Analyze, learn, and trade

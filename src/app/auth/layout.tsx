@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { BarChart3 } from "lucide-react";
 
 export default function AuthLayout({
   children,
@@ -16,12 +15,12 @@ export default function AuthLayout({
 
       <div className="relative w-full max-w-md mx-auto px-4">
         {/* Logo */}
-        <Link href="/" className="flex items-center justify-center gap-2 mb-8 group">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
-            <BarChart3 className="h-5 w-5 text-white" />
-            <div className="absolute inset-0 rounded-xl bg-primary/20 blur-lg group-hover:blur-xl transition-all" />
-          </div>
-          <span className="text-xl font-bold gradient-text">TradingLens</span>
+        <Link href="/" className="flex items-center justify-center mb-8 group">
+          <img
+            src="/logo.png"
+            alt="TradingLens AI"
+            className="h-10 w-auto max-w-[200px] object-contain"
+          />
         </Link>
 
         {children}
