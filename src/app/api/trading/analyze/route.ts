@@ -6,7 +6,7 @@ import {
   buildTradingSystemPrompt,
   buildUserMessage,
   classifyAnalysisType,
-} from "@/lib/openrouter";
+} from "@/lib/llm";
 
 // Fallback mock responses used when the AI API is unavailable
 const MOCK_RESPONSES: Record<string, (pair: string) => string> = {
@@ -109,9 +109,17 @@ export async function POST(request: NextRequest) {
     const resolvedTimeframe = timeframe || "1H";
     const analysisType = classifyAnalysisType(prompt || "analyze");
 
-    // Attempt AI analysis via OpenRouter, fall back to mock on failure
+    // Fetch user's preferred LLM provider
+    const userProfile = await prisma.profile.findUnique({
+      where: { userId: session.user.id },
+      select: { llmProvider: true },
+    });
+    const llmProvider = (userProfile?.llmProvider as "openrouter" | "groq" | "auto") || "auto";
+
+    // Attempt AI analysis via preferred provider, fall back to mock on failure
     let responseContent: string;
     let aiUsed = false;
+    let providerName: string | null = null;
 
     try {
       const systemPrompt = buildTradingSystemPrompt(
@@ -125,21 +133,25 @@ export async function POST(request: NextRequest) {
         imageUrl
       );
 
-      responseContent = await chatCompletion(
+      const { content, providerName: actualProviderName } = await chatCompletion(
+        llmProvider,
         [
           { role: "system", content: systemPrompt },
           userMessage,
         ],
         { temperature: 0.7 }
       );
+      responseContent = content;
       aiUsed = true;
+      providerName = actualProviderName;
     } catch (aiError) {
       console.warn(
-        "OpenRouter AI analysis failed, falling back to mock:",
+        "AI analysis failed, falling back to mock:",
         (aiError as Error).message
       );
       const mockFn = MOCK_RESPONSES[analysisType] ?? MOCK_RESPONSES.analyze;
       responseContent = mockFn(resolvedPair);
+      providerName = "Demo";
     }
 
     // Derive signals — conservative defaults; user should read the full analysis
@@ -169,6 +181,7 @@ export async function POST(request: NextRequest) {
       content: responseContent,
       imageUrl,
       aiUsed,
+      providerName,
     });
   } catch (error) {
     console.error("Analysis failed:", error);

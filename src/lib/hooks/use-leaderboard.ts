@@ -45,6 +45,7 @@ export function useLeaderboard(period: string = "all", search: string = "") {
       return data;
     },
     refetchInterval: 60000,
+    meta: { showErrorToast: false },
   });
 }
 

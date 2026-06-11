@@ -27,6 +27,7 @@ import {
   useCancelSubscription,
   useInitiatePayment,
 } from "@/lib/hooks/use-settings";
+import { toast } from "sonner";
 
 const planIcons: Record<string, typeof Zap> = {
   Basic: Zap,
@@ -81,14 +82,24 @@ export default function SubscriptionPage() {
         subscriptionId: sub.id,
         provider: "paystack",
       });
+      toast.success("Payment initiated successfully");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to process payment";
+      toast.error(message);
     } finally {
       setSelectedPlanId(null);
     }
   };
 
   const handleCancel = async () => {
-    await cancelSubscription.mutateAsync();
-    setShowCancelConfirm(false);
+    try {
+      await cancelSubscription.mutateAsync();
+      setShowCancelConfirm(false);
+      toast.success("Subscription cancelled successfully");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to cancel subscription";
+      toast.error(message);
+    }
   };
 
   if (isLoading) {

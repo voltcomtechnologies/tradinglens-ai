@@ -128,6 +128,7 @@ export function useJournalStats() {
       return data;
     },
     refetchInterval: 30000,
+    meta: { showErrorToast: false },
   });
 }
 

@@ -16,6 +16,8 @@ export interface AnalysisResult {
   id: string;
   content: string;
   imageUrl: string | null;
+  aiUsed?: boolean;
+  providerName?: string | null;
 }
 
 export function useChatMessages(sessionId?: string) {
@@ -27,6 +29,7 @@ export function useChatMessages(sessionId?: string) {
       return data;
     },
     refetchInterval: 5000,
+    meta: { showErrorToast: false },
   });
 }
 
@@ -69,7 +72,6 @@ export function useAnalyzeChart() {
         "/api/trading/analyze",
         formData,
         {
-          headers: { "Content-Type": "multipart/form-data" },
           timeout: 60000,
         }
       );
@@ -101,6 +103,7 @@ export function useNotifications(unreadOnly = false) {
       };
     },
     refetchInterval: 30000,
+    meta: { showErrorToast: false },
   });
 }
 

@@ -10,14 +10,16 @@ import {
   BarChart3,
   TrendingUp,
   TrendingDown,
-  AlertTriangle,
   Camera,
   X,
+  AlertTriangle,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useChatMessages, useSendMessage, useAnalyzeChart } from "@/lib/hooks/use-trading";
 import { MAJOR_PAIRS } from "@/types";
+import { toast } from "sonner";
 
 const QUICK_QUESTIONS = [
   { label: "Analyze EURUSD", prompt: "Analyze this EURUSD chart with technical indicators and key levels" },
@@ -35,6 +37,8 @@ export default function TradingLensPage() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const blobUrlRef = useRef<string | null>(null);
+  const pendingFileRef = useRef<File | null>(null);
 
   const { data: messages, isLoading: messagesLoading } = useChatMessages(sessionId);
   const sendMessage = useSendMessage();
@@ -42,106 +46,162 @@ export default function TradingLensPage() {
 
   const isProcessing = sendMessage.isPending || analyzeChart.isPending;
 
+  const providerName = analyzeChart.data?.providerName ?? null;
+  const aiUsed = analyzeChart.data?.aiUsed ?? false;
+
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, analyzeChart.data]);
 
-  const handleSend = useCallback(async () => {
-    if (!input.trim() || isProcessing) return;
+  // Revoke blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+    };
+  }, []);
 
-    const userMessage = input.trim();
-    setInput("");
-
-    // Save user message
+  const sendTextMessage = useCallback(async (message: string, imageUrl: string | null) => {
     await sendMessage.mutateAsync({
       role: "user",
-      content: userMessage,
+      content: message,
       sessionId,
-      metadata: uploadedImage ? { imageUrl: uploadedImage, pair: selectedPair, timeframe: selectedTimeframe } : { pair: selectedPair, timeframe: selectedTimeframe },
+      metadata: imageUrl ? { imageUrl, pair: selectedPair, timeframe: selectedTimeframe } : { pair: selectedPair, timeframe: selectedTimeframe },
     });
-
-    // Get AI analysis
     const result = await analyzeChart.mutateAsync({
-      prompt: userMessage,
+      prompt: message,
       pair: selectedPair,
       timeframe: selectedTimeframe,
       image: undefined,
     });
-
-    // Save assistant response
     await sendMessage.mutateAsync({
       role: "assistant",
       content: result.content,
       sessionId,
       metadata: { analysisId: result.id },
     });
-
     setUploadedImage(null);
-  }, [input, isProcessing, sendMessage, analyzeChart, sessionId, selectedPair, selectedTimeframe, uploadedImage]);
+    setInput("");
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+  }, [sendMessage, analyzeChart, sessionId, selectedPair, selectedTimeframe, setInput, setUploadedImage]);
+
+  const handleSend = useCallback(async () => {
+    if (!input.trim() || isProcessing) return;
+    const userMessage = input.trim();
+    setInput("");
+    try {
+      await sendTextMessage(userMessage, uploadedImage);
+    } catch (err) {
+      setInput(userMessage);
+      const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      toast.error(message, {
+        action: {
+          label: "Retry",
+          onClick: () => sendTextMessage(userMessage, uploadedImage),
+        },
+      });
+    }
+  }, [input, isProcessing, sendTextMessage, uploadedImage]);
 
   const handleQuickQuestion = useCallback(async (prompt: string) => {
     if (isProcessing) return;
+    try {
+      await sendTextMessage(prompt, null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      toast.error(message, {
+        action: {
+          label: "Retry",
+          onClick: () => sendTextMessage(prompt, null),
+        },
+      });
+    }
+  }, [isProcessing, sendTextMessage]);
 
+  const sendImageMessage = useCallback(async (file: File) => {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+    const imageUrl = URL.createObjectURL(file);
+    blobUrlRef.current = imageUrl;
+    setUploadedImage(imageUrl);
     await sendMessage.mutateAsync({
       role: "user",
-      content: prompt,
+      content: `Analyze this ${selectedPair} ${selectedTimeframe} chart`,
       sessionId,
-      metadata: { pair: selectedPair, timeframe: selectedTimeframe },
+      metadata: { imageUrl, pair: selectedPair, timeframe: selectedTimeframe },
     });
-
     const result = await analyzeChart.mutateAsync({
-      prompt,
+      prompt: `Analyze this ${selectedPair} ${selectedTimeframe} chart`,
       pair: selectedPair,
       timeframe: selectedTimeframe,
+      image: file,
     });
-
     await sendMessage.mutateAsync({
       role: "assistant",
       content: result.content,
       sessionId,
-      metadata: { analysisId: result.id },
+      metadata: { analysisId: result.id, imageUrl: result.imageUrl },
     });
-  }, [isProcessing, sendMessage, analyzeChart, sessionId, selectedPair, selectedTimeframe]);
+    setUploadedImage(null);
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+  }, [selectedPair, selectedTimeframe, sendMessage, analyzeChart, sessionId, setUploadedImage]);
 
   const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
+    pendingFileRef.current = file;
     setIsUploading(true);
     try {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setUploadedImage(event.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-
-      // Auto-analyze the uploaded chart
-      await sendMessage.mutateAsync({
-        role: "user",
-        content: `Analyze this ${selectedPair} ${selectedTimeframe} chart`,
-        sessionId,
-        metadata: { imageUrl: URL.createObjectURL(file), pair: selectedPair, timeframe: selectedTimeframe },
+      await sendImageMessage(file);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      toast.error(message, {
+        action: {
+          label: "Retry",
+          onClick: async () => {
+            const retryFile = pendingFileRef.current;
+            if (!retryFile) return;
+            setIsUploading(true);
+            try {
+              await sendImageMessage(retryFile);
+            } catch (retryErr) {
+              const retryMsg = retryErr instanceof Error ? retryErr.message : "Retry failed";
+              toast.error(retryMsg, {
+                action: {
+                  label: "Retry",
+                  onClick: () => {
+                    const f = pendingFileRef.current;
+                    if (f) sendImageMessage(f);
+                  },
+                },
+              });
+            } finally {
+              setIsUploading(false);
+            }
+          },
+        },
       });
-
-      const result = await analyzeChart.mutateAsync({
-        prompt: `Analyze this ${selectedPair} ${selectedTimeframe} chart`,
-        pair: selectedPair,
-        timeframe: selectedTimeframe,
-        image: file,
-      });
-
-      await sendMessage.mutateAsync({
-        role: "assistant",
-        content: result.content,
-        sessionId,
-        metadata: { analysisId: result.id, imageUrl: result.imageUrl },
-      });
+      setUploadedImage(null);
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
-  }, [selectedPair, selectedTimeframe, sendMessage, analyzeChart, sessionId]);
+  }, [sendImageMessage]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -216,6 +276,26 @@ export default function TradingLensPage() {
               )}
               Upload Chart
             </Button>
+
+            {/* Provider Status Badge */}
+            {providerName && (
+              <div
+                className={cn(
+                  "ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border",
+                  providerName === "Groq"
+                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                    : providerName === "OpenRouter"
+                      ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                      : "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                )}
+              >
+                <Zap className="h-3 w-3" />
+                {providerName}
+                {!aiUsed && (
+                  <span className="text-[10px] opacity-70 ml-0.5">(fallback)</span>
+                )}
+              </div>
+            )}
           </motion.div>
 
           {/* Uploaded image preview */}
@@ -227,7 +307,13 @@ export default function TradingLensPage() {
             >
               <img src={uploadedImage} alt="Uploaded chart" className="w-full h-48 object-contain bg-muted/30" />
               <button
-                onClick={() => setUploadedImage(null)}
+                onClick={() => {
+                  setUploadedImage(null);
+                  if (blobUrlRef.current) {
+                    URL.revokeObjectURL(blobUrlRef.current);
+                    blobUrlRef.current = null;
+                  }
+                }}
                 className="absolute top-2 right-2 p-1 rounded-full bg-background/80 hover:bg-background transition-colors"
               >
                 <X className="h-4 w-4" />

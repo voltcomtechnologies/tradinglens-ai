@@ -18,6 +18,7 @@ export interface UserProfile {
     bio: string | null;
     phone: string | null;
     country: string | null;
+    llmProvider: string | null;
   } | null;
 }
 

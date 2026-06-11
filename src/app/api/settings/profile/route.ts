@@ -38,7 +38,18 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, avatar, currentPassword, newPassword, ...profileFields } = body;
+    const { name, avatar, currentPassword, newPassword, llmProvider, ...profileFields } = body;
+
+    // Validate llmProvider if provided
+    if (llmProvider !== undefined && llmProvider !== null) {
+      const allowedProviders = ["auto", "groq", "openrouter"];
+      if (!allowedProviders.includes(llmProvider)) {
+        return NextResponse.json(
+          { error: "Invalid AI provider. Must be one of: auto, groq, openrouter" },
+          { status: 400 }
+        );
+      }
+    }
 
     // Update user fields
     const updateData: Record<string, unknown> = {};
@@ -79,7 +90,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update/upsert profile
-    if (Object.keys(profileFields).length > 0) {
+    if (Object.keys(profileFields).length > 0 || llmProvider !== undefined) {
       // Ensure JSON string fields are properly serialized for SQLite
       const sanitized = { ...profileFields };
       if (sanitized.preferredPairs && Array.isArray(sanitized.preferredPairs)) {
@@ -97,8 +108,9 @@ export async function PUT(request: NextRequest) {
           bio: sanitized.bio || null,
           phone: sanitized.phone || null,
           country: sanitized.country || null,
+          llmProvider: llmProvider || null,
         },
-        update: sanitized,
+        update: { ...sanitized, llmProvider: llmProvider || undefined },
       });
     }
 

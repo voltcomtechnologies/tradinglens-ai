@@ -56,6 +56,7 @@ model Profile {
   bio             String?
   phone           String?
   country         String?
+  llmProvider     String?  // openrouter, groq, auto
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 

@@ -25,6 +25,8 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useProfile, useUpdateProfile } from "@/lib/hooks/use-settings";
 import { MAJOR_PAIRS } from "@/types";
+import { toast } from "sonner";
+import type { LLMProvider } from "@/lib/llm/types";
 
 type SettingsTab = "profile" | "notifications" | "security" | "appearance" | "trading" | "regional";
 
@@ -45,6 +47,7 @@ function ProfileForm() {
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
   const [phone, setPhone] = useState("");
+  const [llmProvider, setLlmProvider] = useState<LLMProvider>("auto");
 
   // Initialize form fields when profile data loads
   useEffect(() => {
@@ -52,13 +55,20 @@ function ProfileForm() {
       setName(profile.name || "");
       setBio(profile.profile?.bio || "");
       setPhone(profile.profile?.phone || "");
+      setLlmProvider((profile.profile?.llmProvider as LLMProvider) || "auto");
     }
   }, [profile]);
 
   const handleSave = async () => {
-    await updateProfile.mutateAsync({ name, bio, phone });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      await updateProfile.mutateAsync({ name, bio, phone, llmProvider });
+      setSaved(true);
+      toast.success("Profile saved successfully");
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save profile";
+      toast.error(message);
+    }
   };
 
   if (isLoading) {
@@ -105,6 +115,22 @@ function ProfileForm() {
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+1 (555) 000-0000"
           />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="settings-llm">AI Provider</Label>
+          <select
+            id="settings-llm"
+            value={llmProvider}
+            onChange={(e) => setLlmProvider(e.target.value as LLMProvider)}
+            className="w-full bg-muted text-sm rounded-lg px-3 py-2 border border-border outline-none"
+          >
+            <option value="auto">Auto (recommended)</option>
+            <option value="groq">Groq — Free tier, no credit card required</option>
+            <option value="openrouter">OpenRouter — Requires credits</option>
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Choose which AI provider powers your Trading Lens analysis. Auto picks the best available provider.
+          </p>
         </div>
       </div>
       <Button onClick={handleSave} disabled={updateProfile.isPending} className="gap-2">
@@ -175,16 +201,14 @@ function SecurityForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPws, setShowPws] = useState(false);
   const updateProfile = useUpdateProfile();
-  const [error, setError] = useState("");
 
   const handleChangePassword = async () => {
-    setError("");
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
     if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters");
+      toast.error("Password must be at least 8 characters");
       return;
     }
     try {
@@ -192,8 +216,10 @@ function SecurityForm() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch {
-      setError("Failed to update password. Check your current password.");
+      toast.success("Password updated successfully");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to update password. Check your current password.";
+      toast.error(message);
     }
   };
 
@@ -240,7 +266,6 @@ function SecurityForm() {
             </button>
           </div>
         </div>
-        {error && <p className="text-xs text-destructive">{error}</p>}
         <Button
           onClick={handleChangePassword}
           disabled={!currentPassword || !newPassword || updateProfile.isPending}

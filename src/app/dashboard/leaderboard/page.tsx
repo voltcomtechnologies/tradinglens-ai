@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLeaderboard, getInitials, formatProfitFactor } from "@/lib/hooks/use-leaderboard";
+import { toast } from "sonner";
 
 const PERIODS = [
   { value: "all", label: "All Time" },
@@ -147,7 +148,7 @@ export default function LeaderboardPage() {
           <p className="text-sm text-muted-foreground mb-4">
             There was an error fetching the leaderboard data. Please try again.
           </p>
-          <Button variant="outline" onClick={() => refetch()}>
+          <Button variant="outline" onClick={() => { toast.dismiss(); refetch(); }}>
             Retry
           </Button>
         </motion.div>

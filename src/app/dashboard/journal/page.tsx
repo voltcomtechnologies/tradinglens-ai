@@ -12,6 +12,7 @@ import {
   BarChart3,
   RotateCcw,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -330,7 +331,7 @@ export default function JournalPage() {
           <p className="text-sm text-muted-foreground mb-4">
             Something went wrong. Please try again.
           </p>
-          <Button variant="outline" onClick={() => refetch()}>
+          <Button variant="outline" onClick={() => { toast.dismiss(); refetch(); }}>
             Try Again
           </Button>
         </motion.div>
