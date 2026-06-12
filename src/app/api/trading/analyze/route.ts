@@ -8,6 +8,12 @@ import {
   classifyAnalysisType,
 } from "@/lib/llm";
 
+/** Normalize any thrown value into a proper Error with message and stack */
+function toError(e: unknown): Error {
+  if (e instanceof Error) return e;
+  return new Error(typeof e === "string" ? e : JSON.stringify(e));
+}
+
 // Fallback mock responses used when the AI API is unavailable
 const MOCK_RESPONSES: Record<string, (pair: string) => string> = {
   analyze: (pair) => `## Technical Analysis: ${pair}
@@ -77,7 +83,18 @@ const MOCK_RESPONSES: Record<string, (pair: string) => string> = {
 };
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
+  let session;
+  try {
+    session = await auth();
+  } catch (authError) {
+    const authErr = toError(authError);
+    console.error("[analyze] Auth error:", authErr.message, authErr.stack);
+    return NextResponse.json(
+      { error: "Unauthorized", detail: authErr.message },
+      { status: 401 }
+    );
+  }
+
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -109,12 +126,23 @@ export async function POST(request: NextRequest) {
     const resolvedTimeframe = timeframe || "1H";
     const analysisType = classifyAnalysisType(prompt || "analyze");
 
-    // Fetch user's preferred LLM provider
-    const userProfile = await prisma.profile.findUnique({
-      where: { userId: session.user.id },
-      select: { llmProvider: true },
-    });
-    const llmProvider = (userProfile?.llmProvider as "openrouter" | "groq" | "auto") || "auto";
+    // Fetch user's preferred LLM provider (gracefully handle missing column/migration)
+    let llmProvider: "openrouter" | "groq" | "auto" = "auto";
+    try {
+      const userProfile = await prisma.profile.findUnique({
+        where: { userId: session.user.id },
+        select: { llmProvider: true },
+      });
+      llmProvider = (userProfile?.llmProvider as "openrouter" | "groq" | "auto") || "auto";
+    } catch (profileError) {
+      const msg = toError(profileError).message;
+      if (msg.includes("column") || msg.includes("llmProvider")) {
+        console.warn("[analyze] llmProvider column not found, defaulting to auto:", msg);
+      } else {
+        throw profileError; // Re-throw real database errors — outer catch will log
+      }
+      llmProvider = "auto";
+    }
 
     // Attempt AI analysis via preferred provider, fall back to mock on failure
     let responseContent: string;
@@ -145,10 +173,8 @@ export async function POST(request: NextRequest) {
       aiUsed = true;
       providerName = actualProviderName;
     } catch (aiError) {
-      console.warn(
-        "AI analysis failed, falling back to mock:",
-        (aiError as Error).message
-      );
+      const aiErr = toError(aiError);
+      console.error("[analyze] AI analysis failed, falling back to mock:", aiErr.message, aiErr.stack);
       const mockFn = MOCK_RESPONSES[analysisType] ?? MOCK_RESPONSES.analyze;
       responseContent = mockFn(resolvedPair);
       providerName = "Demo";
@@ -184,9 +210,16 @@ export async function POST(request: NextRequest) {
       providerName,
     });
   } catch (error) {
-    console.error("Analysis failed:", error);
+    const err = toError(error);
+    console.error("[analyze] Unhandled error:", err.message);
+    console.error("[analyze] Stack trace:", err.stack);
+    const isAdmin = session?.user?.role === "ADMIN";
     return NextResponse.json(
-      { error: "Analysis failed" },
+      {
+        error: "Analysis failed",
+        message: err.message,
+        ...(isAdmin && { stack: err.stack }),
+      },
       { status: 500 }
     );
   }

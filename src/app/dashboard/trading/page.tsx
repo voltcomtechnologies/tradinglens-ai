@@ -14,10 +14,16 @@ import {
   X,
   AlertTriangle,
   Zap,
+  Volume2,
+  VolumeX,
+  Pause,
+  Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { useChatMessages, useSendMessage, useAnalyzeChart } from "@/lib/hooks/use-trading";
+import { useSpeechSynthesis } from "@/lib/hooks/use-speech-synthesis";
 import { MAJOR_PAIRS } from "@/types";
 import { toast } from "sonner";
 
@@ -43,6 +49,18 @@ export default function TradingLensPage() {
   const { data: messages, isLoading: messagesLoading } = useChatMessages(sessionId);
   const sendMessage = useSendMessage();
   const analyzeChart = useAnalyzeChart();
+  const speech = useSpeechSynthesis();
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const saved = localStorage.getItem("tradinglens-auto-speak");
+    return saved === null ? true : saved === "true";
+  });
+
+  // Persist auto-speak preference
+  useEffect(() => {
+    localStorage.setItem("tradinglens-auto-speak", String(autoSpeakEnabled));
+  }, [autoSpeakEnabled]);
 
   const isProcessing = sendMessage.isPending || analyzeChart.isPending;
 
@@ -77,19 +95,23 @@ export default function TradingLensPage() {
       timeframe: selectedTimeframe,
       image: undefined,
     });
-    await sendMessage.mutateAsync({
+    const assistantMsg = await sendMessage.mutateAsync({
       role: "assistant",
       content: result.content,
       sessionId,
       metadata: { analysisId: result.id },
     });
+    if (autoSpeakEnabled) {
+      setSpeakingMessageId(assistantMsg.id);
+      speech.speak(result.content, () => setSpeakingMessageId(null));
+    }
     setUploadedImage(null);
     setInput("");
     if (blobUrlRef.current) {
       URL.revokeObjectURL(blobUrlRef.current);
       blobUrlRef.current = null;
     }
-  }, [sendMessage, analyzeChart, sessionId, selectedPair, selectedTimeframe, setInput, setUploadedImage]);
+  }, [sendMessage, analyzeChart, sessionId, selectedPair, selectedTimeframe, setInput, setUploadedImage, speech, setSpeakingMessageId]);
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || isProcessing) return;
@@ -144,18 +166,22 @@ export default function TradingLensPage() {
       timeframe: selectedTimeframe,
       image: file,
     });
-    await sendMessage.mutateAsync({
+    const assistantMsg = await sendMessage.mutateAsync({
       role: "assistant",
       content: result.content,
       sessionId,
       metadata: { analysisId: result.id, imageUrl: result.imageUrl },
     });
+    if (autoSpeakEnabled) {
+      setSpeakingMessageId(assistantMsg.id);
+      speech.speak(result.content, () => setSpeakingMessageId(null));
+    }
     setUploadedImage(null);
     if (blobUrlRef.current) {
       URL.revokeObjectURL(blobUrlRef.current);
       blobUrlRef.current = null;
     }
-  }, [selectedPair, selectedTimeframe, sendMessage, analyzeChart, sessionId, setUploadedImage]);
+  }, [selectedPair, selectedTimeframe, sendMessage, analyzeChart, sessionId, setUploadedImage, speech, setSpeakingMessageId]);
 
   const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -277,8 +303,22 @@ export default function TradingLensPage() {
               Upload Chart
             </Button>
 
-            {/* Provider Status Badge */}
-            {providerName && (
+            {/* Right-aligned controls group */}
+            <div className="ml-auto flex items-center gap-3 flex-wrap">
+              {/* Auto-speak Toggle */}
+              {speech.supported && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Auto-speak</span>
+                  <Switch
+                    checked={autoSpeakEnabled}
+                    onCheckedChange={setAutoSpeakEnabled}
+                    size="sm"
+                  />
+                </div>
+              )}
+
+              {/* Provider Status Badge */}
+              {providerName && (
               <div
                 className={cn(
                   "ml-auto flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border",
@@ -296,6 +336,7 @@ export default function TradingLensPage() {
                 )}
               </div>
             )}
+            </div>
           </motion.div>
 
           {/* Uploaded image preview */}
@@ -388,9 +429,52 @@ export default function TradingLensPage() {
                           return <p key={i} className="mb-1">{line}</p>;
                         })}
                       </div>
-                      <p className="text-[10px] text-muted-foreground mt-2 opacity-60">
-                        {new Date(msg.createdAt).toLocaleTimeString()}
-                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <p className="text-[10px] text-muted-foreground opacity-60">
+                          {new Date(msg.createdAt).toLocaleTimeString()}
+                        </p>
+                        {msg.role === "assistant" && speech.supported && (
+                          <div className="flex items-center gap-1">
+                            {speakingMessageId !== msg.id && (
+                              <button
+                                onClick={() => {
+                                  setSpeakingMessageId(msg.id);
+                                  speech.speak(msg.content, () => setSpeakingMessageId(null));
+                                }}
+                                className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                                title="Speak analysis"
+                              >
+                                <Volume2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                            {speakingMessageId === msg.id && speech.isSpeaking && (
+                              <button
+                                onClick={() => speech.isPaused ? speech.resume() : speech.pause()}
+                                className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                                title={speech.isPaused ? "Resume" : "Pause"}
+                              >
+                                {speech.isPaused ? (
+                                  <Play className="h-3 w-3" />
+                                ) : (
+                                  <Pause className="h-3 w-3" />
+                                )}
+                              </button>
+                            )}
+                            {speakingMessageId === msg.id && (
+                              <button
+                                onClick={() => {
+                                  speech.stop();
+                                  setSpeakingMessageId(null);
+                                }}
+                                className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                title="Stop speaking"
+                              >
+                                <VolumeX className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                     {msg.role === "user" && (
                       <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0 mt-1">
