@@ -81,24 +81,32 @@ export async function POST(request: Request) {
   }
 
   const userId = session.user.id;
+  const isAdmin = session.user.role === "ADMIN";
 
   // ── Entitlement check: ACTIVE subscription whose plan has 'edu' in lensAccess.
-  const sub = await prisma.subscription.findFirst({
-    where: {
-      userId,
-      status: "ACTIVE",
-      endDate: { gte: new Date() },
-    },
-    include: { plan: true },
-    orderBy: { createdAt: "desc" },
-  });
-  if (!sub) {
+  // ADMIN users bypass the subscription requirement so admins can verify the
+  // integration end-to-end without provisioning a Stripe sub for themselves.
+  // The daily rate limit + per-course `aiClassroomEnabled` check still apply.
+  const sub = isAdmin
+    ? null
+    : await prisma.subscription.findFirst({
+        where: {
+          userId,
+          status: "ACTIVE",
+          endDate: { gte: new Date() },
+        },
+        include: { plan: true },
+        orderBy: { createdAt: "desc" },
+      });
+  if (!sub && !isAdmin) {
     return NextResponse.json(
       { error: "An active subscription is required" },
       { status: 403 }
     );
   }
-  let lensAccess: string[] = parseLensAccess(sub.plan.lensAccess);
+  let lensAccess: string[] = sub
+    ? parseLensAccess(sub.plan.lensAccess)
+    : ["edu"]; // admin bypass: synthesize full-lens access
   // Note: demo seed SubscriptionPlan rows have lensAccess as a JSON array.
   // A parse failure here indicates a misconfigured or legacy plan row.
   if (!lensAccess.includes("edu")) {
