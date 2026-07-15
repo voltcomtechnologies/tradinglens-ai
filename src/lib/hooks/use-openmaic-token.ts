@@ -2,7 +2,12 @@
 
 import { useQuery, useMutation } from "@tanstack/react-query";
 import axios from "axios";
-import { buildOpenmaicClassroomUrl, type OpenmaicOutline } from "@/lib/openmaic";
+import {
+  buildOpenmaicClassroomUrl,
+  estimatePromptBytes,
+  MAX_OUTLINE_BYTES,
+  type OpenmaicOutline,
+} from "@/lib/openmaic";
 
 export type UsageResponse = { limit: number; used: number };
 export type TokenResponse = {
@@ -30,6 +35,15 @@ export function useLaunchAiclassroom() {
     courseId?: string;
   }>({
     mutationFn: async ({ outline, courseSlug, courseId }) => {
+      // Pre-flight: refuse to mint a token for an outline whose rendered
+      // requirement would blow past the OpenMAIC textarea. Prevents a
+      // server roundtrip + audit row for a launch URL OpenMAIC will reject.
+      const bytes = estimatePromptBytes(outline);
+      if (bytes > MAX_OUTLINE_BYTES) {
+        throw new Error(
+          `Course outline is too large to launch (${bytes} > ${MAX_OUTLINE_BYTES} bytes; please contact an admin to trim the outline).`
+        );
+      }
       const tokenResp = await axios.post<TokenResponse>("/api/openmaic-token", {
         courseId,
       });

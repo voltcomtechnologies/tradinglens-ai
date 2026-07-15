@@ -1,10 +1,16 @@
 import { cookies } from 'next/headers';
 import { apiSuccess } from '@/lib/server/api-response';
-import { verifyAccessToken } from '@/lib/server/access-token';
+import { verifyAccessToken, logSecretFingerprintOnce } from '@/lib/server/access-token';
 
 export async function GET() {
   const accessCode = process.env.ACCESS_CODE;
   const enabled = !!accessCode;
+
+  if (enabled) {
+    // Log the ACCESS_CODE fingerprint exactly once per cold start so the
+    // deployer can confirm env-var parity with the TradingLens deploy log.
+    logSecretFingerprintOnce(accessCode);
+  }
 
   let authenticated = false;
   if (enabled) {

@@ -49,13 +49,20 @@ Create **two** Vercel projects from the same GitHub repo:
 - **Root Directory:** `.` (the repo root)
 - **Build Command:** `npx prisma generate && next build` (already in `vercel.json`)
 - **Install Command:** `npm install`
-- **Environment Variables (Production / Preview):**
+- **Environment Variables (Production AND Preview \u2014 not Production only):**
   - `DATABASE_URL`
   - `AUTH_SECRET`
   - `OPENROUTER_API_KEY` (or `GROQ_API_KEY`)
   - `OPENMAIC_SHARED_SECRET` — paste the value from step 1
   - `NEXT_PUBLIC_OPENMAIC_URL` — `https://classroom.tradinglens.vercel.app`
     (use the URL Vercel issues for Project 2, then update once Project 2 is up)
+
+  > **Scope reminder:** Repeat the values above for **both Production and
+  > Preview** environments. Otherwise Preview deploys (PR previews, branch
+  > pushes) will see `OPENMAIC_SHARED_SECRET` as `undefined` and the
+  > `/api/openmaic-token` route will respond with `500 / "OPENMAIC_SHARED_SECRET
+  > is not set or is too short"`. Vercel defaults each env var to a single
+  > scope at creation time \u2014 audit each var explicitly.
 
 ### Project 2 — OpenMAIC (new)
 
@@ -66,13 +73,33 @@ In the Vercel "New Project" wizard, instead of importing a fresh repo, import th
 - **Build Command:** leave default `pnpm build`
 - **Install Command:** leave default `pnpm install` (Vercel picks up the
   `packageManager` field in `openmaic/package.json` and provisions pnpm 10.x)
-- **Environment Variables:**
+- **Environment Variables (Production AND Preview \u2014 not Production only):**
   - `ACCESS_CODE` — paste the SAME secret you used for `OPENMAIC_SHARED_SECRET`
   - `OPENROUTER_API_KEY` — same key as TradingLens, or a separate one
   - `DEFAULT_MODEL` — e.g. `openrouter:deepseek/deepseek-chat` for low cost,
     or `google:gemini-3-flash-preview` for highest quality (OpenMAIC docs
-    recommend Gemini 3 Flash)
+    recommend Gemini 3 Flash). For xAI Grok, use `grok:grok-4.20` — the
+    `grok-4.20-reasoning` / `grok-4.20-multi-agent` slugs that earlier
+    OpenMAIC versions shipped with **do not exist on xAI's API** and will
+    return HTTP 400 ("model_not_found") from `/v1/chat/completions`. xAI
+    ships `grok-4.20` as the base slug; reasoning is controlled via
+    request-time params (`reasoning_effort`), not via the slug.
   - Optionally: `LEMONADE_BASE_URL`, `TTS_*` if you want TTS in classrooms
+
+> **Slug-mismatch warning.** If you wire up `grok:grok-4.20-reasoning`
+> because a tutorial told you to, expect every classroom call to fail with
+> `AI_APICallError: Bad Request`. xAI's API rejects `grok-4.20-reasoning`
+> with a 400 and the OpenMAIC `[Verify Model]` log line corroborates this.
+> The vendored OpenMAIC subdir at this commit (`openmaic/lib/ai/providers.ts`)
+> has already had those hallucinated slug entries removed; the canonical
+> Grok model slug is `grok:grok-4.20`.
+
+
+  > **Scope reminder:** as with Project 1, set each var on **both Production
+  > and Preview** environments in Project 2. Preview deploys will otherwise
+  > see `ACCESS_CODE` as `undefined` and OpenMAIC's middleware will fall
+  > through to its own access-code modal (different from the
+  > `?at=<token>` HMAC path) for every request.
 
 Vercel auto-creates `https<nolink>-classroom-tradinglens.vercel.app`.
 Attach the `classroom.tradinglens.com` custom domain once Project 2 is
@@ -117,6 +144,56 @@ After both projects deploy:
 
 If the user lands on OpenMAIC without a token (cold direct visit), they get
 the existing ACCESS_CODE prompt — that's the safety net.
+
+## Verifying env-var parity (fingerprint logs)
+
+> **⚠️ If you ever paste, screenshot, log, or chat a secret value, treat it as exposed.** Rotate it **first**, then run the parity check below on the freshly-generated value. The act of confirming parity on a leaked value proves only that both projects are equally compromised.
+
+The HMAC bridge assumes `OPENMAIC_SHARED_SECRET` (TradingLens) and
+`ACCESS_CODE` (OpenMAIC) are byte-identical. Both projects emit a
+`[openmaic-secret-fingerprint]` line on the first cold start of every
+container. Run, in two terminals:
+
+```sh
+# Project 1 (TradingLens)
+vercel logs --prod | grep openmaic-secret-fingerprint
+
+# Project 2 (OpenMAIC)
+vercel logs --prod | grep openmaic-secret-fingerprint
+```
+
+Both lines should look like (same hash on both sides == env-var parity):
+
+```
+[openmaic-secret-fingerprint] TradingLens OPENMAIC_SHARED_SECRET = a3f81c2e\u20269b4d (length=44) \u2014 compare\u2026
+[openmaic-secret-fingerprint] OpenMAIC ACCESS_CODE              = a3f81c2e\u20269b4d (length=44) \u2014 compare\u2026
+```
+
+The fingerprint is a truncated SHA-256 of the secret, **not** a substring of
+the secret itself \u2014 no byte of either secret ever appears in any log.
+
+**Why you may see N > 1 lines per project.** Vercel serverless functions
+each have their own module scope. The TradingLens route reads the secret
+inside `src/lib/openmaic-token.ts:getSecret()`, and the OpenMAIC routes
+(`/api/access-code/{verify,status}` + `middleware.ts`) each instantiate
+their own once-logged boolean. You may see a handful of lines per project
+in the first minute after a deploy: one per cold-started container, one
+per route that reads the secret. As long as **any** pair matches, the
+secrets are aligned.
+
+**Offline verification.** Want to confirm parity without waiting for a
+cold start? Hash the secret locally and compare against either deploy
+log:
+
+```sh
+SECRET='paste your secret here'
+node -e "const h=require('crypto').createHash('sha256').update(process.argv[1],'utf8').digest('hex'); console.log(h.slice(0,8)+'\u2026'+h.slice(8,12))" "$SECRET"
+```
+
+The output should match the `= <hash>\u2026<hash>` segment in either log.
+If it doesn't, the secret you typed locally differs from the one Vercel
+has \u2014 check for stray whitespace, line breaks, or a copy/paste that
+included a `"` quote.
 
 ## Cost controls already wired up
 

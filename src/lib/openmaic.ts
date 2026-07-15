@@ -30,6 +30,26 @@ export type OpenmaicOutline = {
 };
 
 /**
+ * Maximum allowed size (in UTF-8 bytes) for a rendered outline requirement.
+ * Mirrors the practical textarea size of OpenMAIC's curriculum prompt. Any
+ * outline that exceeds this cap is rejected before we mint an HMAC token
+ * so the audit row is not created for launches that OpenMAIC would refuse
+ * upstream anyway.
+ */
+export const MAX_OUTLINE_BYTES = 65_536;
+
+/**
+ * Estimate the byte length of the OpenMAIC prompt that would be generated
+ * for a given outline. Used as a UI-level pre-flight in
+ * `useLaunchAiclassroom` so we can refuse oversized outlines before posting
+ * to `/api/openmaic-token`.
+ */
+export function estimatePromptBytes(outline: OpenmaicOutline | unknown): number {
+  const prompt = renderOutlineToRequirement(outline);
+  return Buffer.byteLength(prompt, "utf8");
+}
+
+/**
  * Render an outline JSON as plain English that OpenMAIC's outline-prompt
  * can read. Falls back to a JSON dump if the structure is malformed.
  */

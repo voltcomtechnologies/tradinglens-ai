@@ -1,4 +1,12 @@
-const MODEL_ID_ALIASES: ReadonlyMap<string, string> = new Map([['openai:gpt-5.6-sol', 'gpt-5.6']]);
+const MODEL_ID_ALIASES: ReadonlyMap<string, string> = new Map([
+  ['openai:gpt-5.6-sol', 'gpt-5.6'],
+  // Defense-in-depth aliases for OpenMAIC Grok slugs that xAI's API 400s on
+  // (model_not_found). Allow stale browser-localStorage entries or older
+  // DEFAULT_MODEL env-var values from before the cleanup to silently
+  // re-route to the canonical `grok-4.20` slug without a UI migration.
+  ['grok:grok-4.20-reasoning', 'grok-4.20'],
+  ['grok:grok-4.20-multi-agent', 'grok-4.20'],
+]);
 
 /** Resolve aliases used for local catalog, settings, capability, and usage lookups. */
 export function getCanonicalModelId(providerId: string, modelId: string): string {

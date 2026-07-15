@@ -25,13 +25,16 @@ describe('thinking config metadata', () => {
   });
 
   it('does not expose fixed thinking models as configurable', () => {
-    const thinking = getThinking('grok', 'grok-4.20-reasoning');
+    // xAI's `grok-4.20` has no reasoning metadata overlay in the registry —
+    // reasoning is controlled via request params (reasoning_effort), not the
+    // slug. We assert the model exists and has no thinking-capability object.
+    const thinking = getThinking('grok', 'grok-4.20');
+    expect(thinking).toBeUndefined();
+    expect(supportsConfigurableThinking(thinking)).toBe(false);
     const minimaxM27Thinking = getThinking('minimax', 'MiniMax-M2.7');
     const kimiK27CodeThinking = getThinking('kimi', 'kimi-k2.7-code');
     const kimiK27CodeHighSpeedThinking = getThinking('kimi', 'kimi-k2.7-code-highspeed');
 
-    expect(thinking?.control).toBe('none');
-    expect(supportsConfigurableThinking(thinking)).toBe(false);
     expect(minimaxM27Thinking?.control).toBe('none');
     expect(supportsConfigurableThinking(minimaxM27Thinking)).toBe(false);
     expect(kimiK27CodeThinking?.control).toBe('none');

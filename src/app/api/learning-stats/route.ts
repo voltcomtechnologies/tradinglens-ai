@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+// Force Node.js runtime. Pinning prevents a future Hobby→Pro migration or
+// Edge-functions experiment from silently flipping this route and breaking
+// NextAuth (`auth()` requires Node).
+export const runtime = "nodejs";
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {

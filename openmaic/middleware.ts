@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logSecretFingerprintOnce } from '@/lib/server/access-token';
 
 /** Convert string to Uint8Array */
 function encode(str: string): Uint8Array {
@@ -46,6 +47,9 @@ export async function middleware(request: NextRequest) {
   if (!accessCode) {
     return NextResponse.next();
   }
+  // Log the ACCESS_CODE fingerprint exactly once per cold start so the
+  // deployer can confirm env-var parity with the TradingLens deploy log.
+  logSecretFingerprintOnce(accessCode);
 
   const { pathname } = request.nextUrl;
 

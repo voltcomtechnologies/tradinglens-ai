@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual, createHash } from "node:crypto";
 
 /**
  * TradingLens → OpenMAIC bridge token.
@@ -16,6 +16,34 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 export const OPENMAIC_TOKEN_TTL_SECONDS = 10 * 60; // 10 minutes
 
+/**
+ * Render a non-sensitive fingerprint of a secret so a deployer can confirm
+ * env-var parity by running `vercel logs --prod | grep openmaic-secret-fingerprint`
+ * on both projects and eyeball-comparing the two hashes. The fingerprint is
+ * a SHA-256 of the secret bytes truncated to 12 hex chars: same secret on
+ * both projects produces identical fingerprints, but no byte of the secret
+ * itself is ever written to a log. Compatible with OpenMAIC's matching
+ * `secretFingerprint` in `openmaic/lib/server/access-token.ts`.
+ */
+export function secretFingerprint(s: string): string {
+  if (!s || s.length < 14) return "<secret missing or too short to fingerprint>";
+  const hex = createHash("sha256").update(s, "utf8").digest("hex");
+  return `${hex.slice(0, 8)}\u2026${hex.slice(8, 12)}`;
+}
+
+let loggedFingerprint = false;
+function logSecretFingerprintOnce(secret: string): void {
+  if (loggedFingerprint) return;
+  loggedFingerprint = true;
+  // Tagged so the user can `vercel logs --prod | grep openmaic-secret-fingerprint`
+  // and confirm parity with the same tagged log emitted by the OpenMAIC deploy.
+  console.info(
+    `[openmaic-secret-fingerprint] TradingLens OPENMAIC_SHARED_SECRET = ${secretFingerprint(
+      secret
+    )} (length=${secret.length}) — compare against the same tag in the OpenMAIC deploy logs to confirm env-var parity.`
+  );
+}
+
 function getSecret(): string {
   const s = process.env.OPENMAIC_SHARED_SECRET;
   if (!s || s.length < 16) {
@@ -25,6 +53,7 @@ function getSecret(): string {
         "set as ACCESS_CODE in the OpenMAIC deploy."
     );
   }
+  logSecretFingerprintOnce(s);
   return s;
 }
 

@@ -392,8 +392,6 @@ const THINKING_CAPABILITIES: Record<string, ThinkingCapability> = {
     'medium',
   ),
 
-  [getModelMetadataKey('grok', 'grok-4.20-reasoning')]: fixedThinkingCapability,
-  [getModelMetadataKey('grok', 'grok-4.20-multi-agent')]: fixedThinkingCapability,
   [getModelMetadataKey('grok', 'grok-4-1-fast-reasoning')]: fixedThinkingCapability,
 
   [getModelMetadataKey('minimax', 'MiniMax-M3')]: minimaxM3Thinking,

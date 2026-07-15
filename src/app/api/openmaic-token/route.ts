@@ -3,6 +3,13 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { signOpenmaicToken } from "@/lib/openmaic-token";
 
+// Force Node.js runtime. The route uses `node:crypto` (createHmac,
+// timingSafeEqual) which is not available on Vercel's Edge runtime. Vercel
+// defaults `/app/api/**` to Node today, but pinning the runtime prevents a
+// future Hobby→Pro migration or Edge-functions experiment from silently
+// flipping the runtime and breaking `node:crypto` at request time.
+export const runtime = "nodejs";
+
 const DAILY_LIMIT = 5;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
