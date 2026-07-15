@@ -497,6 +497,13 @@ async function main() {
         category: courseData.category,
         isPublished: true,
         orderIndex: courseData.orderIndex,
+        // Path A: every demo course gets an AI Classroom outline so the
+        // `/dashboard/learn/[slug]` "Launch AI Classroom" CTA succeeds.
+        // courseData.aiClassroomOutline is already constructed above by
+        // getOutline(slug) (see the courses[] array) so this is a pure
+        // forward of an already-built JSON object.
+        aiClassroomEnabled: true,
+        aiClassroomOutline: courseData.aiClassroomOutline,
       },
     });
 
