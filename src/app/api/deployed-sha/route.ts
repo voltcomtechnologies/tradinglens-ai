@@ -21,15 +21,15 @@ export async function GET() {
     {
       sha: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
       ref: process.env.VERCEL_GIT_COMMIT_REF ?? null,
-      message: process.env.VERCEL_GIT_COMMIT_MESSAGE ?? null,
       deploymentId: process.env.VERCEL_DEPLOYMENT_ID ?? null,
       deploymentUrl: process.env.VERCEL_DEPLOYMENT_URL ?? null,
       env: process.env.VERCEL_ENV ?? null,
     },
     {
       headers: {
-        // Never cache; the answer must reflect the current build always.
-        "Cache-Control": "no-store, no-cache, must-revalidate",
+        // No-store forbids any cache; the answer must always reflect the
+        // current build. (no-cache/must-revalidate would be redundant.)
+        "Cache-Control": "no-store",
       },
     }
   );
