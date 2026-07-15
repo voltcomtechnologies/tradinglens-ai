@@ -34,22 +34,8 @@ async function main() {
   });
   const nextOrder = (maxOrder._max.orderIndex ?? 0) + 1;
 
-  // Create course
-  const course = await prisma.course.create({
-    data: {
-      title: "Intermediate Trading Course",
-      slug: "intermediate-trading-course",
-      description:
-        "A comprehensive intermediate-level guide covering chart patterns, pivot points, Elliott Wave theory, harmonic price patterns, trading psychology, and market structures. Build on your foundational knowledge with advanced technical analysis and professional trading mindset techniques.",
-      level: "intermediate",
-      category: "technical analysis",
-      isPublished: true,
-      orderIndex: nextOrder,
-    },
-  });
-  console.log("Created course:", course.id, course.title);
-
-  // Module definitions based on PDF structure
+  // Module definitions based on PDF structure (declared BEFORE course.create
+  // because the OpenMAIC outline re-uses their titles/descriptions).
   const modulesData = [
     {
       title: "Chart Patterns",
@@ -87,6 +73,34 @@ async function main() {
       materialTitle: "Market Structures Overview",
     },
   ];
+
+  // Create course with AI Classroom outline derived from the modules.
+  const course = await prisma.course.create({
+    data: {
+      title: "Intermediate Trading Course",
+      slug: "intermediate-trading-course",
+      description:
+        "A comprehensive intermediate-level guide covering chart patterns, pivot points, Elliott Wave theory, harmonic price patterns, trading psychology, and market structures. Build on your foundational knowledge with advanced technical analysis and professional trading mindset techniques.",
+      level: "intermediate",
+      category: "technical analysis",
+      isPublished: true,
+      orderIndex: nextOrder,
+      aiClassroomEnabled: true,
+      aiClassroomOutline: {
+        title: "Intermediate Trading Course",
+        audience:
+          "Traders who have completed the Forex Fundamentals and are ready for reverse-engineered trading tactics",
+        summary:
+          "Continuation of foundational concepts into applied intermediate technical analysis and trader-mindset work.",
+        sections: modulesData.map((m) => ({
+          title: m.title,
+          description: m.description,
+          topics: [],
+        })),
+      },
+    },
+  });
+  console.log("Created course:", course.id, course.title);
 
   for (let i = 0; i < modulesData.length; i++) {
     const modData = modulesData[i];

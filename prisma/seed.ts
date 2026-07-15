@@ -344,6 +344,8 @@ async function main() {
       level: "beginner",
       category: "fundamentals",
       orderIndex: 1,
+      aiClassroomEnabled: true,
+      aiClassroomOutline: getOutline("forex-fundamentals-mastery"),
       modules: [
         {
           title: "Introduction to Forex Markets",
@@ -380,6 +382,8 @@ async function main() {
       level: "intermediate",
       category: "technical analysis",
       orderIndex: 2,
+      aiClassroomEnabled: true,
+      aiClassroomOutline: getOutline("technical-analysis-pro"),
       modules: [
         {
           title: "Candlestick Patterns",
@@ -415,6 +419,8 @@ async function main() {
       level: "intermediate",
       category: "psychology",
       orderIndex: 3,
+      aiClassroomEnabled: true,
+      aiClassroomOutline: getOutline("trading-psychology"),
       modules: [
         {
           title: "The Trader's Mindset",
@@ -450,6 +456,8 @@ async function main() {
       level: "advanced",
       category: "risk management",
       orderIndex: 4,
+      aiClassroomEnabled: true,
+      aiClassroomOutline: getOutline("advanced-risk-management"),
       modules: [
         {
           title: "Position Sizing Models",
@@ -560,6 +568,144 @@ async function main() {
 
   console.log("\n🎉 Seed completed successfully!");
   console.log("   Demo login: any email (e.g., demo@tradinglens.com) + password: Demo1234!");
+}
+
+function getOutline(slug: string) {
+  const outlines: Record<string, { title: string; audience: string; summary: string; sections: Array<{ title: string; description: string; topics?: string[] }> }> = {
+    "forex-fundamentals-mastery": {
+      title: "Forex Fundamentals Mastery",
+      audience: "First-time retail forex traders with no formal market background",
+      summary:
+        "A practical introduction to the foreign exchange market, the lingo traders use, and how to size a trade responsibly.",
+      sections: [
+        {
+          title: "What the Forex Market Actually Is",
+          description:
+            "Explain how a decentralised FX market works, who quotes prices, and why pip and lot sizes exist.",
+          topics: [
+            "Spot FX vs forwards",
+            "Interbank vs retail",
+            "Bid / ask spread mechanics",
+          ],
+        },
+        {
+          title: "Currency Pairs, Pips and Lots",
+          description:
+            "Walk through majors, crosses and exotics, then compute pip value for a standard vs mini lot.",
+          topics: ["Major pairs", "JPY pairs (two-decimal pip)", "Lot sizing"],
+        },
+        {
+          title: "Leverage, Margin and Position Sizing",
+          description:
+            "Show how 50:1 leverage amplifies both gains and losses, and how to translate a 1% risk rule into lots.",
+          topics: ["Margin vs free margin", "Margin call mechanics", "Risk-based sizing"],
+        },
+        {
+          title: "Trading Sessions and Volatility",
+          description:
+            "Map the Sydney / Tokyo / London / New York sessions and when EUR/USD typically moves the most.",
+          topics: ["Session overlaps", "Average daily range", "News catalysts"],
+        },
+      ],
+    },
+    "technical-analysis-pro": {
+      title: "Technical Analysis Pro",
+      audience: "Traders comfortable with basic charting who want a systematic TA toolkit",
+      summary:
+        "A practitioner's guide to reading price action using multi-timeframe structure, candle context and confluence with common indicators.",
+      sections: [
+        {
+          title: "Price Action Vocabulary",
+          description:
+            "Define trend, range and reversal using higher-timeframe structure before zooming into execution timeframes.",
+          topics: ["Higher-high / higher-low", "Break of structure", "Change of character"],
+        },
+        {
+          title: "Candlestick Context",
+          description:
+            "Read individual candles as a story of buyers vs sellers, not as a standalone signal.",
+          topics: ["Pin bars in context", "Engulfing at structure", "Inside bars"],
+        },
+        {
+          title: "Indicator Confluence",
+          description:
+            "Use RSI, MACD, VWAP and moving averages as confirmations, never as primary triggers.",
+          topics: ["RSI divergence", "MACD zero-cross", "VWAP as institutional reference"],
+        },
+        {
+          title: "Multi-Timeframe Execution",
+          description:
+            "Plan on the daily, bias on the 4H, trigger on the 1H or 15M.",
+          topics: ["Top-down analysis", "Trigger vs entry", "Invalidation levels"],
+        },
+      ],
+    },
+    "trading-psychology": {
+      title: "Trading Psychology & Discipline",
+      audience: "Traders who are profitable in backtests but struggle in live execution",
+      summary:
+        "A mental-skills program aimed at removing the two emotions that destroy most trading accounts: fear and revenge.",
+      sections: [
+        {
+          title: "The Two Emotions That Drain Accounts",
+          description:
+            "Map the FOMO → impulse entry → loss → revenge cycle using real journal entries.",
+          topics: ["FOMO entries", "Revenge trading", "Loss aversion asymmetry"],
+        },
+        {
+          title: "Process Over Outcome",
+          description:
+            "Define a tradable grade-A setup and refuse to act on anything else, even after three losers in a row.",
+          topics: ["Pre-trade checklist", "No-trade zones", "Process scorecards"],
+        },
+        {
+          title: "Risk as Sovereign",
+          description:
+            "Treat 1-2% per trade as a constitutional rule that overrides every other variable.",
+          topics: ["Fixed fractional", "Daily loss limit", "Cool-down protocols"],
+        },
+        {
+          title: "Review and Calibration",
+          description:
+            "Hold a weekly 30-minute review of every trade, win or loss, and convert that into a single change.",
+          topics: ["Weekly review template", "Tagging trades", "Tracking process vs P&L"],
+        },
+      ],
+    },
+    "advanced-risk-management": {
+      title: "Advanced Risk Management",
+      audience: "Experienced traders managing prop-firm or personal accounts in the $25k+ range",
+      summary:
+        "Institutional-grade risk frameworks for traders who care more about surviving 1000 trades than winning any single one.",
+      sections: [
+        {
+          title: "Position-Sizing Models",
+          description:
+            "Compare fixed-fractional, fixed-ratio and Kelly-criterion sizing with worked examples per account size.",
+          topics: ["Kelly criterion edge calculation", "Fixed-ratio tiers", "Volatility-adjusted sizing"],
+        },
+        {
+          title: "Correlation and Portfolio Risk",
+          description:
+            "Roll up correlated positions into a single net exposure metric.",
+          topics: ["Spearman correlation", "Net exposure", "Sector / pair clustering"],
+        },
+        {
+          title: "Drawdown Engineering",
+          description:
+            "Define a drawdown protocol: at -5% reduce size, at -10% go to cash, at -15% mandatory two-week break.",
+          topics: ["Step-down rules", "Freeze rules", "Capital preservation logic"],
+        },
+        {
+          title: "Journaling for Risk, Not Just P&L",
+          description:
+            "Track process metrics like R-multiple average, % of grade-A setups taken, and drawdown depth.",
+          topics: ["Risk scorecards", "R-multiple tracking", "Variance vs edge"],
+        },
+      ],
+    },
+  };
+  return outlines[slug] ?? outlines["forex-fundamentals-mastery"];
 }
 
 function getQuizQuestions(slug: string): Array<{

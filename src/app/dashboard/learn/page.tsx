@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useCourses, useCourseProgress } from "@/lib/hooks/use-courses";
+import { useLearningStats } from "@/lib/hooks/use-learning-stats";
 
 const levelConfig: Record<string, { badge: string; gradient: string }> = {
   beginner: {
@@ -39,15 +40,20 @@ const levelConfig: Record<string, { badge: string; gradient: string }> = {
 export default function EduLensPage() {
   const { data: courses, isLoading: coursesLoading } = useCourses();
   const { data: progressData, isLoading: progressLoading } = useCourseProgress();
+  const { data: learningStats, isLoading: statsLoading } = useLearningStats();
 
-  const isLoading = coursesLoading || progressLoading;
+  const isLoading = coursesLoading || progressLoading || statsLoading;
 
-  // Calculate aggregate stats from real progress data
-  const enrolledCourses = progressData?.length ?? 0;
-  const completedModules =
-    progressData?.filter((p) => p.isCompleted).length ?? 0;
-  const totalTimeSpent =
-    progressData?.reduce((sum, p) => sum + p.timeSpent, 0) ?? 0;
+  // Aggregate stats come from /api/learning-stats (which counts real
+  // QuizResult rows), so the "Quizzes Passed" tile is no longer a hard-
+  // coded "—". The legacy progressData feed is preserved for the per-
+  // course progress bar and the courses-enrolled count fallback.
+  const enrolledCourses =
+    learningStats?.enrolledCourses ?? progressData?.length ?? 0;
+  const completedModules = learningStats?.modulesCompleted ?? 0;
+  const quizzesPassed = learningStats?.quizzesPassed ?? 0;
+  const learningHours = Math.round((learningStats?.learningMinutes ?? 0) / 60);
+  const totalTimeSpent = learningStats?.learningMinutes ?? 0;
 
   return (
     <div className="space-y-8">
@@ -89,15 +95,13 @@ export default function EduLensPage() {
           },
           {
             label: "Quizzes Passed",
-            value: "—",
+            value: isLoading ? "—" : String(quizzesPassed),
             icon: Award,
             color: "text-amber-400",
           },
           {
             label: "Learning Hours",
-            value: isLoading
-              ? "—"
-              : String(Math.round(totalTimeSpent / 60)),
+            value: isLoading ? "—" : String(learningHours),
             icon: Clock,
             color: "text-blue-400",
           },

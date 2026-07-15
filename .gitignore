@@ -54,3 +54,15 @@ dev.db-journal
 
 .vercel
 .env*
+
+# ── OpenMAIC subrepo (vendored next to the TradingLens app) ──────────
+# node_modules at every nesting level: root openmaic, packages/*, app/, etc.
+openmaic/node_modules/
+openmaic/packages/*/node_modules/
+openmaic/**/dist/
+openmaic/**/.next/
+openmaic/**/.turbo/
+openmaic/**/.cache/
+# Build artifacts produced by openmaic's postinstall step.
+openmaic/packages/*/lib/
+openmaic/packages/*/dist/

@@ -15,12 +15,22 @@ import {
   Timer,
   Trophy,
   Users,
+  Sparkles,
+  ExternalLink,
+  Info,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import {
+  useLaunchAiclassroom,
+  useOpenmaicUsage,
+} from "@/lib/hooks/use-openmaic-token";
 
 type Module = {
   id: string;
@@ -53,6 +63,8 @@ type Course = {
   coverImage: string | null;
   level: string;
   category: string;
+  aiClassroomOutline: unknown;
+  aiClassroomEnabled: boolean;
   modules: Module[];
   quizzes: Quiz[];
 };
@@ -90,6 +102,38 @@ export function CourseDetailContent({ course, progress }: CourseDetailContentPro
     (sum, m) => sum + m.materials.length,
     0
   );
+
+  // AI Classroom state (OpenMAIC-backed live course).
+  // Coerce to a strict boolean: without `Boolean(...)` the `&&` short-circuit
+  // returns the JSON outline itself when aiClassroomEnabled is true, and that
+  // `unknown`-typed value is not a valid ReactNode when used as a `{ ... }`
+  // conditional child.
+  const aiEnabled = Boolean(
+    course.aiClassroomEnabled && course.aiClassroomOutline
+  );
+  const launchAi = useLaunchAiclassroom();
+  const usage = useOpenmaicUsage();
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const handleLaunchAiClassroom = async () => {
+    setAiError(null);
+    try {
+      const r = await launchAi.mutateAsync({
+        outline: course.aiClassroomOutline,
+        courseSlug: course.slug,
+        courseId: course.id,
+      });
+      window.location.assign(r.url);
+    } catch (err) {
+      const msg =
+        axios.isAxiosError(err) && err.response?.data?.error
+          ? String(err.response.data.error)
+          : err instanceof Error
+            ? err.message
+            : "Could not start AI classroom";
+      setAiError(msg);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -269,6 +313,83 @@ export function CourseDetailContent({ course, progress }: CourseDetailContentPro
           ))}
         </div>
       </motion.div>
+
+      {/* AI Classroom (OpenMAIC) Section */}
+      {aiEnabled && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18 }}
+          className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-violet-500/5 to-purple-500/10 p-6 lg:p-8 relative overflow-hidden"
+        >
+          <div className="absolute -top-12 -right-12 w-48 h-48 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-xl bg-primary/15 text-primary shrink-0">
+                <Sparkles className="h-6 w-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold">AI Classroom</h2>
+                  <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">
+                    Live
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  A multi-agent tutor generates an interactive lesson from the
+                  course outline. You will see an AI teacher narrating slides,
+                  drawing on a whiteboard, and quizzing you live.
+                </p>
+              </div>
+            </div>
+
+            {usage.data && (
+              <div className="text-xs text-muted-foreground">
+                Limit: {usage.data.limit} generations per 24-hour window &middot;{" "}
+                <span className="font-medium text-foreground">
+                  {usage.data.used} used in the last 24h
+                </span>
+              </div>
+            )}
+
+            {aiError && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {aiError}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                onClick={handleLaunchAiClassroom}
+                disabled={
+                  launchAi.isPending ||
+                  usage.isLoading ||
+                  (usage.data
+                    ? usage.data.used >= usage.data.limit
+                    : false)
+                }
+                className="gap-2"
+                size="lg"
+              >
+                {launchAi.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                Start AI Classroom
+                <ExternalLink className="h-3.5 w-3.5 opacity-80" />
+              </Button>
+              <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground/80 max-w-md">
+                <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <span>
+                  Generations are saved locally on this device (OpenMAIC uses
+                  browser storage). They will not appear on other devices.
+                </span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Quizzes Section */}
       {course.quizzes.length > 0 && (
