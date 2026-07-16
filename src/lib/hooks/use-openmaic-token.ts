@@ -9,12 +9,13 @@ import {
   type OpenmaicOutline,
 } from "@/lib/openmaic";
 
-export type UsageResponse = { limit: number; used: number };
+export type UsageResponse = { limit: number; used: number; isUnlimited?: boolean };
 export type TokenResponse = {
   token: string;
   expiresInSeconds: number;
   limit: number;
   used: number;
+  isUnlimited?: boolean;
 };
 
 // Dedicated axios instance for the OpenMAIC token endpoints. The interceptor

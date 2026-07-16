@@ -157,12 +157,12 @@ export async function POST(request: Request) {
       }
     }
 
-    // ── Daily rate limit (per user, not per course).
+    // ── Daily rate limit (per user, not per course). Admins bypass the limit.
     const since = new Date(Date.now() - DAY_MS);
     const usedToday = await prisma.courseAiGeneration.count({
       where: { userId, createdAt: { gte: since } },
     });
-    if (usedToday >= DAILY_LIMIT) {
+    if (!isAdmin && usedToday >= DAILY_LIMIT) {
       return NextResponse.json(
         {
           error: `Daily AI classroom limit reached (${DAILY_LIMIT}/day). Try again tomorrow.`,
@@ -193,6 +193,7 @@ export async function POST(request: Request) {
       expiresAt: signed.expiresAt,
       limit: DAILY_LIMIT,
       used: usedToday + 1,
+      isUnlimited: isAdmin,
     });
   } catch (error) {
     console.error("[openmaic-token] POST error:", error);
@@ -220,7 +221,7 @@ export async function GET() {
     // issues from surfacing as FK violations in downstream queries.
     const dbUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true },
+      select: { id: true, role: true },
     });
     if (!dbUser) {
       return NextResponse.json(
@@ -229,11 +230,13 @@ export async function GET() {
       );
     }
 
+    const isAdmin = dbUser.role === "ADMIN";
+
     const since = new Date(Date.now() - DAY_MS);
     const used = await prisma.courseAiGeneration.count({
       where: { userId, createdAt: { gte: since } },
     });
-    return NextResponse.json({ limit: DAILY_LIMIT, used });
+    return NextResponse.json({ limit: DAILY_LIMIT, used, isUnlimited: isAdmin });
   } catch (error) {
     console.error("[openmaic-token] GET error:", error);
     return NextResponse.json(

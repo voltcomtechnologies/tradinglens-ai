@@ -343,7 +343,7 @@ export function CourseDetailContent({ course, progress }: CourseDetailContentPro
               </div>
             </div>
 
-            {usage.data && (
+            {usage.data && !usage.data.isUnlimited && (
               <div className="text-xs text-muted-foreground">
                 Limit: {usage.data.limit} generations per 24-hour window &middot;{" "}
                 <span className="font-medium text-foreground">
@@ -365,7 +365,7 @@ export function CourseDetailContent({ course, progress }: CourseDetailContentPro
                   launchAi.isPending ||
                   usage.isLoading ||
                   (usage.data
-                    ? usage.data.used >= usage.data.limit
+                    ? !usage.data.isUnlimited && usage.data.used >= usage.data.limit
                     : false)
                 }
                 className="gap-2"
