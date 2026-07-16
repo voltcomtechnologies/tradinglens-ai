@@ -80,104 +80,127 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const userId = session.user.id;
-  const isAdmin = session.user.role === "ADMIN";
+  try {
+    const userId = session.user.id;
 
-  // ── Entitlement check: ACTIVE subscription whose plan has 'edu' in lensAccess.
-  // ADMIN users bypass the subscription requirement so admins can verify the
-  // integration end-to-end without provisioning a Stripe sub for themselves.
-  // The daily rate limit + per-course `aiClassroomEnabled` check still apply.
-  const sub = isAdmin
-    ? null
-    : await prisma.subscription.findFirst({
-        where: {
-          userId,
-          status: "ACTIVE",
-          endDate: { gte: new Date() },
-        },
-        include: { plan: true },
-        orderBy: { createdAt: "desc" },
-      });
-  if (!sub && !isAdmin) {
-    return NextResponse.json(
-      { error: "An active subscription is required" },
-      { status: 403 }
-    );
-  }
-  let lensAccess: string[] = sub
-    ? parseLensAccess(sub.plan.lensAccess)
-    : ["edu"]; // admin bypass: synthesize full-lens access
-  // Note: demo seed SubscriptionPlan rows have lensAccess as a JSON array.
-  // A parse failure here indicates a misconfigured or legacy plan row.
-  if (!lensAccess.includes("edu")) {
-    return NextResponse.json(
-      { error: "Your subscription does not include Edu Lens access" },
-      { status: 403 }
-    );
-  }
-
-  // ── If a courseId was supplied, verify the course is AI-enabled.
-  let course = null as null | {
-    id: string;
-    slug: string;
-    aiClassroomEnabled: boolean;
-    aiClassroomOutline: unknown;
-  };
-  if (body.courseId) {
-    course = await prisma.course.findUnique({
-      where: { id: body.courseId },
-      select: {
-        id: true,
-        slug: true,
-        aiClassroomEnabled: true,
-        aiClassroomOutline: true,
-      },
+    // Verify the user still exists in the database. NextAuth JWT sessions can
+    // outlive the underlying user row (e.g. account deletion), which would
+    // otherwise trigger a foreign-key violation when we create the audit row.
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true },
     });
-    if (!course || !course.aiClassroomEnabled) {
+    if (!dbUser) {
       return NextResponse.json(
-        { error: "This course does not have an AI Classroom available" },
-        { status: 404 }
+        { error: "User not found. Please sign in again." },
+        { status: 401 }
       );
     }
-  }
 
-  // ── Daily rate limit (per user, not per course).
-  const since = new Date(Date.now() - DAY_MS);
-  const usedToday = await prisma.courseAiGeneration.count({
-    where: { userId, createdAt: { gte: since } },
-  });
-  if (usedToday >= DAILY_LIMIT) {
-    return NextResponse.json(
-      {
-        error: `Daily AI classroom limit reached (${DAILY_LIMIT}/day). Try again tomorrow.`,
-        limit: DAILY_LIMIT,
-        used: usedToday,
+    const isAdmin = dbUser.role === "ADMIN";
+
+    // ── Entitlement check: ACTIVE subscription whose plan has 'edu' in lensAccess.
+    // ADMIN users bypass the subscription requirement so admins can verify the
+    // integration end-to-end without provisioning a Stripe sub for themselves.
+    // The daily rate limit + per-course `aiClassroomEnabled` check still apply.
+    const sub = isAdmin
+      ? null
+      : await prisma.subscription.findFirst({
+          where: {
+            userId,
+            status: "ACTIVE",
+            endDate: { gte: new Date() },
+          },
+          include: { plan: true },
+          orderBy: { createdAt: "desc" },
+        });
+    if (!sub && !isAdmin) {
+      return NextResponse.json(
+        { error: "An active subscription is required" },
+        { status: 403 }
+      );
+    }
+    let lensAccess: string[] = sub
+      ? parseLensAccess(sub.plan.lensAccess)
+      : ["edu"]; // admin bypass: synthesize full-lens access
+    // Note: demo seed SubscriptionPlan rows have lensAccess as a JSON array.
+    // A parse failure here indicates a misconfigured or legacy plan row.
+    if (!lensAccess.includes("edu")) {
+      return NextResponse.json(
+        { error: "Your subscription does not include Edu Lens access" },
+        { status: 403 }
+      );
+    }
+
+    // ── If a courseId was supplied, verify the course is AI-enabled.
+    let course = null as null | {
+      id: string;
+      slug: string;
+      aiClassroomEnabled: boolean;
+      aiClassroomOutline: unknown;
+    };
+    if (body.courseId) {
+      course = await prisma.course.findUnique({
+        where: { id: body.courseId },
+        select: {
+          id: true,
+          slug: true,
+          aiClassroomEnabled: true,
+          aiClassroomOutline: true,
+        },
+      });
+      if (!course || !course.aiClassroomEnabled) {
+        return NextResponse.json(
+          { error: "This course does not have an AI Classroom available" },
+          { status: 404 }
+        );
+      }
+    }
+
+    // ── Daily rate limit (per user, not per course).
+    const since = new Date(Date.now() - DAY_MS);
+    const usedToday = await prisma.courseAiGeneration.count({
+      where: { userId, createdAt: { gte: since } },
+    });
+    if (usedToday >= DAILY_LIMIT) {
+      return NextResponse.json(
+        {
+          error: `Daily AI classroom limit reached (${DAILY_LIMIT}/day). Try again tomorrow.`,
+          limit: DAILY_LIMIT,
+          used: usedToday,
+        },
+        { status: 429 }
+      );
+    }
+
+    // ── Issue the token using OpenMAIC-native format so the deployed
+    //    middleware verifies it without a custom-format patch.
+    const signed = signOpenmaicToken();
+
+    // ── Audit. Recorded on every issuance; courseId may be null for
+    //    generic tokens. The `launched` flag is updated by client telemetry.
+    await prisma.courseAiGeneration.create({
+      data: {
+        userId,
+        courseId: course?.id ?? null,
+        launched: false,
       },
-      { status: 429 }
+    });
+
+    return NextResponse.json({
+      token: signed.token,
+      expiresInSeconds: signed.expiresInSeconds,
+      expiresAt: signed.expiresAt,
+      limit: DAILY_LIMIT,
+      used: usedToday + 1,
+    });
+  } catch (error) {
+    console.error("[openmaic-token] POST error:", error);
+    return NextResponse.json(
+      { error: "An unexpected error occurred while generating the token" },
+      { status: 500 }
     );
   }
-
-  // ── Issue the token using OpenMAIC-native format so the deployed
-  //    middleware verifies it without a custom-format patch.
-  const signed = signOpenmaicToken();
-
-  // ── Audit. Recorded on every issuance; courseId may be null for
-  //    generic tokens. The `launched` flag is updated by client telemetry.
-  await prisma.courseAiGeneration.create({
-    data: {
-      userId,
-      courseId: course?.id ?? null,
-      launched: false,
-    },
-  });
-
-  return NextResponse.json({
-    token: signed.token,
-    expiresInSeconds: signed.expiresInSeconds,
-    expiresAt: signed.expiresAt,
-    limit: DAILY_LIMIT,
-    used: usedToday + 1,
-  });
 }
 
 /**
@@ -189,9 +212,33 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const since = new Date(Date.now() - DAY_MS);
-  const used = await prisma.courseAiGeneration.count({
-    where: { userId: session.user.id, createdAt: { gte: since } },
-  });
-  return NextResponse.json({ limit: DAILY_LIMIT, used });
+
+  try {
+    const userId = session.user.id;
+
+    // Verify the user still exists in the database to prevent stale session
+    // issues from surfacing as FK violations in downstream queries.
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!dbUser) {
+      return NextResponse.json(
+        { error: "User not found. Please sign in again." },
+        { status: 401 }
+      );
+    }
+
+    const since = new Date(Date.now() - DAY_MS);
+    const used = await prisma.courseAiGeneration.count({
+      where: { userId, createdAt: { gte: since } },
+    });
+    return NextResponse.json({ limit: DAILY_LIMIT, used });
+  } catch (error) {
+    console.error("[openmaic-token] GET error:", error);
+    return NextResponse.json(
+      { error: "An unexpected error occurred while fetching usage" },
+      { status: 500 }
+    );
+  }
 }
