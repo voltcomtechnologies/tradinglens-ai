@@ -17,11 +17,27 @@ export type TokenResponse = {
   used: number;
 };
 
+// Dedicated axios instance for the OpenMAIC token endpoints. The interceptor
+// redirects to the sign-in page on 401 so stale sessions are handled gracefully
+// instead of surfacing a generic error to the user.
+const openmaicApi = axios.create();
+openmaicApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      if (typeof window !== "undefined") {
+        window.location.assign("/auth/signin");
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export function useOpenmaicUsage() {
   return useQuery<UsageResponse>({
     queryKey: ["openmaic-usage"],
     queryFn: async () => {
-      const r = await axios.get<UsageResponse>("/api/openmaic-token");
+      const r = await openmaicApi.get<UsageResponse>("/api/openmaic-token");
       return r.data;
     },
     staleTime: 30 * 1000,
@@ -44,7 +60,7 @@ export function useLaunchAiclassroom() {
           `Course outline is too large to launch (${bytes} > ${MAX_OUTLINE_BYTES} bytes; please contact an admin to trim the outline).`
         );
       }
-      const tokenResp = await axios.post<TokenResponse>("/api/openmaic-token", {
+      const tokenResp = await openmaicApi.post<TokenResponse>("/api/openmaic-token", {
         courseId,
       });
       const url = buildOpenmaicClassroomUrl({

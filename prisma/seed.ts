@@ -26,29 +26,27 @@ async function main() {
   console.log("🌱 Seeding database...");
 
   // ── Clean existing seed data (idempotent) ──────────────────────
-  console.log("🧹 Cleaning existing data...");
-  await prisma.tradingJournal.deleteMany();
-  await prisma.notification.deleteMany();
-  await prisma.leaderboardEntry.deleteMany();
+  console.log("🧹 Cleaning existing seed data...");
+  // Keep users, profiles, accounts and sessions intact so existing NextAuth
+  // JWTs remain valid after re-seeding. Everything else is reset to the demo
+  // state defined below.
   await prisma.quizResult.deleteMany();
   await prisma.quiz.deleteMany();
   await prisma.pDFMaterial.deleteMany();
   await prisma.courseModule.deleteMany();
   await prisma.courseProgress.deleteMany();
   await prisma.course.deleteMany();
-  await prisma.profile.deleteMany();
-  await prisma.account.deleteMany();
-  await prisma.session.deleteMany();
   await prisma.payment.deleteMany();
   await prisma.subscription.deleteMany();
-  await prisma.user.deleteMany();
   await prisma.subscriptionPlan.deleteMany();
-  console.log("  ✅ Existing data cleaned");
+  console.log("  ✅ Existing seed data cleaned");
 
   // ── Subscription Plans ──────────────────────────────────────────
   const plans = await Promise.all([
-    prisma.subscriptionPlan.create({
-      data: {
+    prisma.subscriptionPlan.upsert({
+      where: { slug: "basic" },
+      update: {},
+      create: {
         name: "Basic",
         slug: "basic",
         description: "Essential tools to start your trading journey",
@@ -66,8 +64,10 @@ async function main() {
         isPopular: false,
       },
     }),
-    prisma.subscriptionPlan.create({
-      data: {
+    prisma.subscriptionPlan.upsert({
+      where: { slug: "pro" },
+      update: {},
+      create: {
         name: "Pro",
         slug: "pro",
         description: "Advanced AI tools for serious traders",
@@ -88,8 +88,10 @@ async function main() {
         isPopular: true,
       },
     }),
-    prisma.subscriptionPlan.create({
-      data: {
+    prisma.subscriptionPlan.upsert({
+      where: { slug: "elite" },
+      update: {},
+      create: {
         name: "Elite",
         slug: "elite",
         description: "Maximum edge with institutional-grade tools",
@@ -111,105 +113,112 @@ async function main() {
       },
     }),
   ]);
-  console.log(`  ✅ Created ${plans.length} subscription plans`);
+  console.log(`  ✅ Upserted ${plans.length} subscription plans`);
 
   // ── Demo Users ───────────────────────────────────────────────────
   const hashedPassword = await bcrypt.hash("Demo1234!", 10);
 
-  const users = await Promise.all([
-    prisma.user.create({
-      data: {
-        email: "alex.trader@example.com",
-        name: "Alex Chen",
-        password: hashedPassword,
-        role: "USER",
-        status: "ACTIVE",
-        profile: {
-          create: {
-            tradingStyle: "swing_trader",
-            experienceLevel: "advanced",
-            preferredPairs: JSON.stringify(["EURUSD", "GBPUSD", "USDJPY"]),
-            bio: "Professional forex trader with 8 years of experience. Focused on price action and market structure.",
-            timezone: "America/New_York",
-          },
-        },
+  const userDefinitions = [
+    {
+      email: "alex.trader@example.com",
+      name: "Alex Chen",
+      role: "USER" as const,
+      profile: {
+        tradingStyle: "swing_trader",
+        experienceLevel: "advanced",
+        preferredPairs: JSON.stringify(["EURUSD", "GBPUSD", "USDJPY"]),
+        bio: "Professional forex trader with 8 years of experience. Focused on price action and market structure.",
+        timezone: "America/New_York",
       },
-    }),
-    prisma.user.create({
-      data: {
-        email: "sarah.profits@example.com",
-        name: "Sarah Williams",
-        password: hashedPassword,
-        role: "USER",
-        status: "ACTIVE",
-        profile: {
-          create: {
-            tradingStyle: "day_trader",
-            experienceLevel: "intermediate",
-            preferredPairs: JSON.stringify(["EURUSD", "GBPJPY", "XAUUSD"]),
-            bio: "Day trader specializing in EURUSD and Gold. Consistency over size!",
-            timezone: "Europe/London",
-          },
-        },
+    },
+    {
+      email: "sarah.profits@example.com",
+      name: "Sarah Williams",
+      role: "USER" as const,
+      profile: {
+        tradingStyle: "day_trader",
+        experienceLevel: "intermediate",
+        preferredPairs: JSON.stringify(["EURUSD", "GBPJPY", "XAUUSD"]),
+        bio: "Day trader specializing in EURUSD and Gold. Consistency over size!",
+        timezone: "Europe/London",
       },
-    }),
-    prisma.user.create({
-      data: {
-        email: "marcus.fx@example.com",
-        name: "Marcus Johnson",
-        password: hashedPassword,
-        role: "USER",
-        status: "ACTIVE",
-        profile: {
-          create: {
-            tradingStyle: "scalper",
-            experienceLevel: "expert",
-            preferredPairs: JSON.stringify(["EURUSD", "USDJPY", "GBPUSD"]),
-            bio: "Scalper with 10+ years in the markets. 90% win rate target.",
-            timezone: "Asia/Tokyo",
-          },
-        },
+    },
+    {
+      email: "marcus.fx@example.com",
+      name: "Marcus Johnson",
+      role: "USER" as const,
+      profile: {
+        tradingStyle: "scalper",
+        experienceLevel: "expert",
+        preferredPairs: JSON.stringify(["EURUSD", "USDJPY", "GBPUSD"]),
+        bio: "Scalper with 10+ years in the markets. 90% win rate target.",
+        timezone: "Asia/Tokyo",
       },
-    }),
-    prisma.user.create({
-      data: {
-        email: "emma.trades@example.com",
-        name: "Emma Davis",
-        password: hashedPassword,
-        role: "USER",
-        status: "ACTIVE",
-        profile: {
-          create: {
-            tradingStyle: "position",
-            experienceLevel: "beginner",
-            preferredPairs: JSON.stringify(["EURUSD", "AUDUSD"]),
-            bio: "Started trading this year. Learning position trading with a focus on risk management.",
-            timezone: "Australia/Sydney",
-          },
-        },
+    },
+    {
+      email: "emma.trades@example.com",
+      name: "Emma Davis",
+      role: "USER" as const,
+      profile: {
+        tradingStyle: "position",
+        experienceLevel: "beginner",
+        preferredPairs: JSON.stringify(["EURUSD", "AUDUSD"]),
+        bio: "Started trading this year. Learning position trading with a focus on risk management.",
+        timezone: "Australia/Sydney",
       },
-    }),
-    prisma.user.create({
-      data: {
-        email: "demo@tradinglens.com",
-        name: "Demo Admin",
-        password: hashedPassword,
-        role: "ADMIN",
-        status: "ACTIVE",
-        profile: {
-          create: {
-            tradingStyle: "day_trader",
-            experienceLevel: "intermediate",
-            preferredPairs: JSON.stringify(["EURUSD", "GBPUSD", "USDJPY", "XAUUSD"]),
-            bio: "Demo account for exploring TradingLens features.",
-            timezone: "UTC",
-          },
-        },
+    },
+    {
+      email: "demo@tradinglens.com",
+      name: "Demo Admin",
+      role: "ADMIN" as const,
+      profile: {
+        tradingStyle: "day_trader",
+        experienceLevel: "intermediate",
+        preferredPairs: JSON.stringify(["EURUSD", "GBPUSD", "USDJPY", "XAUUSD"]),
+        bio: "Demo account for exploring TradingLens features.",
+        timezone: "UTC",
       },
-    }),
-  ]);
-  console.log(`  ✅ Created ${users.length} demo users`);
+    },
+  ];
+
+  const users = await Promise.all(
+    userDefinitions.map(async (def) => {
+      const user = await prisma.user.upsert({
+        where: { email: def.email },
+        update: {
+          name: def.name,
+          role: def.role,
+          status: "ACTIVE",
+        },
+        create: {
+          email: def.email,
+          name: def.name,
+          password: hashedPassword,
+          role: def.role,
+          status: "ACTIVE",
+        },
+      });
+
+      await prisma.profile.upsert({
+        where: { userId: user.id },
+        update: {},
+        create: {
+          userId: user.id,
+          ...def.profile,
+        },
+      });
+
+      return user;
+    })
+  );
+  console.log(`  ✅ Upserted ${users.length} demo users`);
   console.log(`     📧 Login with any email + password: Demo1234!`);
+
+  // Remove previously seeded demo user data so we can recreate it cleanly.
+  const demoUserIds = users.map((u) => u.id);
+  await prisma.tradingJournal.deleteMany({ where: { userId: { in: demoUserIds } } });
+  await prisma.leaderboardEntry.deleteMany({ where: { userId: { in: demoUserIds } } });
+  await prisma.notification.deleteMany({ where: { userId: { in: demoUserIds } } });
 
   // ── Sample Trading Journal Entries ──────────────────────────────
   const now = new Date();
@@ -488,8 +497,19 @@ async function main() {
   ];
 
   for (const courseData of courses) {
-    const course = await prisma.course.create({
-      data: {
+    const course = await prisma.course.upsert({
+      where: { slug: courseData.slug },
+      update: {
+        title: courseData.title,
+        description: courseData.description,
+        level: courseData.level,
+        category: courseData.category,
+        isPublished: true,
+        orderIndex: courseData.orderIndex,
+        aiClassroomEnabled: true,
+        aiClassroomOutline: courseData.aiClassroomOutline,
+      },
+      create: {
         title: courseData.title,
         slug: courseData.slug,
         description: courseData.description,
@@ -497,15 +517,15 @@ async function main() {
         category: courseData.category,
         isPublished: true,
         orderIndex: courseData.orderIndex,
-        // Path A: every demo course gets an AI Classroom outline so the
-        // `/dashboard/learn/[slug]` "Launch AI Classroom" CTA succeeds.
-        // courseData.aiClassroomOutline is already constructed above by
-        // getOutline(slug) (see the courses[] array) so this is a pure
-        // forward of an already-built JSON object.
         aiClassroomEnabled: true,
         aiClassroomOutline: courseData.aiClassroomOutline,
       },
     });
+
+    // Remove previously seeded modules/materials/quizzes for this course
+    // so we can recreate them cleanly. PDFMaterials cascade on module delete.
+    await prisma.courseModule.deleteMany({ where: { courseId: course.id } });
+    await prisma.quiz.deleteMany({ where: { courseId: course.id } });
 
     for (let mi = 0; mi < courseData.modules.length; mi++) {
       const mod = courseData.modules[mi];
