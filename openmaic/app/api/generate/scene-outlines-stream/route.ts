@@ -294,6 +294,7 @@ export async function POST(req: NextRequest) {
       modelInfo,
       modelString,
       thinkingConfig,
+      apiKey: resolvedApiKey,
     } = await resolveModelFromRequest(req, body, 'scene-outlines-stream');
     resolvedModelString = modelString;
 
@@ -550,7 +551,10 @@ export async function POST(req: NextRequest) {
                 ? 'LLM response could not be parsed into outlines'
                 : 'LLM returned empty response';
               log.warn(
-                `Outlines attempt ${attempt} diagnostics: textLen=${fullText.length}, outlines=${parsedOutlines.length}, languageDirective=${languageDirective ? 'yes' : 'no'}, preview=${JSON.stringify(fullText.slice(0, 240))}`,
+                `Outlines attempt ${attempt} diagnostics: textLen=${fullText.length}, outlines=${parsedOutlines.length}, languageDirective=${languageDirective ? 'yes' : 'no'}, model=${resolvedModelString ?? 'unknown'}, apiKeyPresent=${Boolean(resolvedApiKey)}`,
+              );
+              log.warn(
+                `Outlines attempt ${attempt} preview: ${JSON.stringify(fullText.slice(0, 240))}`,
               );
 
               if (attempt <= MAX_STREAM_RETRIES) {

@@ -267,9 +267,16 @@ function GenerationPreviewContent() {
     const settings = useSettingsStore.getState();
     const imageProviderConfig = settings.imageProvidersConfig?.[settings.imageProviderId];
     const videoProviderConfig = settings.videoProvidersConfig?.[settings.videoProviderId];
+
+    // If the client hasn't configured an API key and the provider is not
+    // server-configured, omit the client model headers so the backend can fall
+    // back to its DEFAULT_MODEL / MODEL_ROUTES instead of failing with a
+    // client-chosen model that has no usable credentials.
+    const hasClientCredentials = !!modelConfig.apiKey || !!modelConfig.isServerConfigured;
+
     return {
       'Content-Type': 'application/json',
-      'x-model': modelConfig.modelString,
+      'x-model': hasClientCredentials ? modelConfig.modelString : '',
       'x-api-key': modelConfig.apiKey,
       'x-base-url': modelConfig.baseUrl,
       'x-provider-type': modelConfig.providerType || '',
