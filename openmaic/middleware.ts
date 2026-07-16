@@ -1,46 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { logSecretFingerprintOnce } from '@/lib/server/access-token';
-
-/** Convert string to Uint8Array */
-function encode(str: string): Uint8Array {
-  return new TextEncoder().encode(str);
-}
-
-/** Convert ArrayBuffer to hex string */
-function bufToHex(buf: ArrayBuffer): string {
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-/** Verify an HMAC-signed token using Web Crypto API (Edge-compatible) */
-async function verifyToken(token: string, accessCode: string): Promise<boolean> {
-  const dotIndex = token.indexOf('.');
-  if (dotIndex === -1) return false;
-
-  const timestamp = token.substring(0, dotIndex);
-  const signature = token.substring(dotIndex + 1);
-
-  const keyData = encode(accessCode);
-  const key = await crypto.subtle.importKey(
-    'raw',
-    keyData.buffer as ArrayBuffer,
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-
-  const data = encode(timestamp);
-  const expected = bufToHex(await crypto.subtle.sign('HMAC', key, data.buffer as ArrayBuffer));
-
-  // Constant-length comparison (not truly constant-time in JS, but sufficient here)
-  if (signature.length !== expected.length) return false;
-  let mismatch = 0;
-  for (let i = 0; i < signature.length; i++) {
-    mismatch |= signature.charCodeAt(i) ^ expected.charCodeAt(i);
-  }
-  return mismatch === 0;
-}
+import { logSecretFingerprintOnce, verifyAccessToken } from '@/lib/server/access-token';
 
 export async function middleware(request: NextRequest) {
   const accessCode = process.env.ACCESS_CODE;
@@ -49,7 +8,7 @@ export async function middleware(request: NextRequest) {
   }
   // Log the ACCESS_CODE fingerprint exactly once per cold start so the
   // deployer can confirm env-var parity with the TradingLens deploy log.
-  logSecretFingerprintOnce(accessCode);
+  await logSecretFingerprintOnce(accessCode);
 
   const { pathname } = request.nextUrl;
 
@@ -60,7 +19,7 @@ export async function middleware(request: NextRequest) {
 
   // Check cookie — validate HMAC signature, not just existence
   const cookie = request.cookies.get('openmaic_access');
-  if (cookie?.value && (await verifyToken(cookie.value, accessCode))) {
+  if (cookie?.value && (await verifyAccessToken(cookie.value, accessCode))) {
     return NextResponse.next();
   }
 
@@ -71,7 +30,7 @@ export async function middleware(request: NextRequest) {
   // itself has a 10-minute TTL (set at issuance time), so it self-expires even
   // if the cookie outlives it.
   const atFromUrl = request.nextUrl.searchParams.get('at');
-  if (atFromUrl && (await verifyToken(atFromUrl, accessCode))) {
+  if (atFromUrl && (await verifyAccessToken(atFromUrl, accessCode))) {
     const cleanUrl = request.nextUrl.clone();
     cleanUrl.searchParams.delete('at');
     const response = NextResponse.redirect(cleanUrl);
@@ -98,5 +57,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|logos/).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|logos/|avatars/).*)'],
 };

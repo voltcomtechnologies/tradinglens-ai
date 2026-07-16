@@ -1,7 +1,10 @@
 import { cookies } from 'next/headers';
-import { timingSafeEqual } from 'crypto';
 import { apiError, apiSuccess } from '@/lib/server/api-response';
-import { createAccessToken, logSecretFingerprintOnce } from '@/lib/server/access-token';
+import {
+  createAccessToken,
+  logSecretFingerprintOnce,
+  timingSafeEqual,
+} from '@/lib/server/access-token';
 
 export async function POST(request: Request) {
   const accessCode = process.env.ACCESS_CODE;
@@ -10,7 +13,7 @@ export async function POST(request: Request) {
   }
   // Log the ACCESS_CODE fingerprint exactly once per cold start so the
   // deployer can confirm env-var parity with the TradingLens deploy log.
-  logSecretFingerprintOnce(accessCode);
+  await logSecretFingerprintOnce(accessCode);
 
   let body: { code?: string };
   try {
@@ -30,7 +33,7 @@ export async function POST(request: Request) {
     return apiError('INVALID_REQUEST', 401, 'Invalid access code');
   }
 
-  const token = createAccessToken(accessCode);
+  const token = await createAccessToken(accessCode);
   const cookieStore = await cookies();
   cookieStore.set('openmaic_access', token, {
     httpOnly: true,

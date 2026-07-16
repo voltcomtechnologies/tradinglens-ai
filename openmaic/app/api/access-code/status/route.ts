@@ -9,14 +9,14 @@ export async function GET() {
   if (enabled) {
     // Log the ACCESS_CODE fingerprint exactly once per cold start so the
     // deployer can confirm env-var parity with the TradingLens deploy log.
-    logSecretFingerprintOnce(accessCode);
+    await logSecretFingerprintOnce(accessCode);
   }
 
   let authenticated = false;
   if (enabled) {
     const cookieStore = await cookies();
     const token = cookieStore.get('openmaic_access')?.value;
-    authenticated = !!token && verifyAccessToken(token, accessCode);
+    authenticated = !!token && (await verifyAccessToken(token, accessCode));
   }
 
   return apiSuccess({ enabled, authenticated });
