@@ -17,6 +17,7 @@ declare module "next-auth/jwt" {
     id: string;
     role: "USER" | "ADMIN";
     status: "ACTIVE" | "SUSPENDED" | "PENDING";
+    stale?: boolean;
   }
 }
 
@@ -87,10 +88,32 @@ export const authConfig: NextAuthConfig = {
         token.role = user.role ?? token.role;
         token.status = user.status ?? token.status;
       }
+
+      // Verify the user still exists in the database to catch stale sessions
+      // early (e.g., after a database reset/reseed that invalidates JWTs).
+      if (token.id) {
+        const { prisma } = await import("./prisma");
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id },
+          select: { id: true, role: true, status: true },
+        });
+
+        if (!dbUser || dbUser.status === "SUSPENDED") {
+          // Mark the token as stale so the session callback can treat the
+          // request as unauthenticated.
+          token.stale = true;
+        } else {
+          // Sync role/status in case they changed in the database.
+          token.role = dbUser.role;
+          token.status = dbUser.status;
+          token.stale = false;
+        }
+      }
+
       return token;
     },
     session: async ({ session, token }) => {
-      if (token) {
+      if (token && !token.stale) {
         session.user = {
           ...session.user,
           id: token.id as string,
