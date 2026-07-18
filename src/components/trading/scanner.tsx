@@ -10,6 +10,8 @@ import {
   Scan,
   RefreshCw,
   AlertCircle,
+  Maximize,
+  Minimize,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -45,8 +47,10 @@ export function TradingScanner({
   const [permissionStatus, setPermissionStatus] = useState<"prompt" | "granted" | "denied">("prompt");
   const [isRequestingCamera, setIsRequestingCamera] = useState(true);
   const [announcement, setAnnouncement] = useState<string>("");
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const hasAnnouncedGranted = useRef(false);
   const webcamRef = useRef<Webcam>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Check camera permission status on mount
   useEffect(() => {
@@ -144,10 +148,29 @@ export function TradingScanner({
     return () => clearTimeout(timer);
   }, [announcement]);
 
+  // Exit fullscreen on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFullscreen]);
+
+  const toggleFullscreen = () => {
+    setIsFullscreen((prev) => !prev);
+  };
+
   return (
     <div
+      ref={containerRef}
       className={cn(
-        "relative w-full max-w-3xl mx-auto rounded-3xl overflow-hidden border border-primary/20 bg-card/40 backdrop-blur-xl",
+        "relative w-full overflow-hidden border border-primary/20 bg-card/40 backdrop-blur-xl transition-all duration-300",
+        isFullscreen
+          ? "fixed inset-0 z-50 rounded-none max-w-none mx-0 h-screen flex flex-col"
+          : "max-w-3xl mx-auto rounded-3xl",
         className
       )}
     >
@@ -169,8 +192,24 @@ export function TradingScanner({
           </div>
         </div>
 
-        {/* Mode toggle */}
-        <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/50 border border-border/50">
+        {/* Fullscreen toggle */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleFullscreen}
+            aria-pressed={isFullscreen}
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+          >
+            {isFullscreen ? (
+              <Minimize className="h-3.5 w-3.5" />
+            ) : (
+              <Maximize className="h-3.5 w-3.5" />
+            )}
+            {isFullscreen ? "Exit" : "Fullscreen"}
+          </button>
+
+          {/* Mode toggle */}
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/50 border border-border/50">
           <button
             onClick={() => setMode("camera")}
             aria-pressed={mode === "camera"}
@@ -198,10 +237,11 @@ export function TradingScanner({
             Upload
           </button>
         </div>
+        </div>
       </div>
 
       {/* Scan viewport */}
-      <div className="relative aspect-video bg-black/40 overflow-hidden">
+      <div className={cn("relative bg-black/40 overflow-hidden", isFullscreen ? "flex-1" : "aspect-video")}>
         {!hasImage ? (
           <>
             {mode === "camera" ? (

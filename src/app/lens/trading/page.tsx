@@ -1,112 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { useSession } from "next-auth/react";
+import { motion } from "framer-motion";
 import { Sparkles, Shield, Zap, Brain } from "lucide-react";
-import type { ScanHistoryItem } from "@/lib/hooks/use-trading";
-import { toast } from "sonner";
-import { TradingScanner, type ScannerResult } from "@/components/trading/scanner";
-import { ScanResult } from "@/components/trading/scan-result";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { useAnalyzeChart, useScanHistory, useDeleteScan } from "@/lib/hooks/use-trading";
-import { useVoice } from "@/lib/hooks/use-voice";
-import { dataUrlToFile } from "@/lib/utils";
-import { ScanHistoryGallery } from "@/components/trading/scan-history";
+import { TradingLensCore } from "@/components/trading/trading-lens-core";
 
 export default function TradingLensPage() {
-  const { data: session } = useSession();
-  const [capturedImage, setCapturedImage] = useState<string | File | null>(null);
-  const [result, setResult] = useState<ScannerResult | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-
-  const analyzeMutation = useAnalyzeChart();
-  const { data: scanHistory, isLoading: isHistoryLoading } = useScanHistory(!!session?.user);
-  const deleteScanMutation = useDeleteScan();
-  const { speak, isSpeaking, isSupported } = useVoice({ rate: 0.95, volume: 1 });
-
-  const handleImageCapture = useCallback((imageData: string | File) => {
-    setCapturedImage(imageData);
-    setResult(null);
-  }, []);
-
-  const handleScanComplete = useCallback(async () => {
-    if (!capturedImage) return;
-
-    setIsAnalyzing(true);
-    setResult(null);
-
-    try {
-      const imageFile =
-        capturedImage instanceof File
-          ? capturedImage
-          : await dataUrlToFile(capturedImage, "chart-scan.jpg");
-
-      const data = await analyzeMutation.mutateAsync({
-        prompt: "Analyze this forex chart and provide a clear BUY, SELL, or HOLD recommendation with key levels and reasoning.",
-        pair: "EURUSD",
-        timeframe: "1H",
-        image: imageFile,
-      });
-
-      const signal = data.signal || "hold";
-      const confidence = data.confidence ?? 70;
-      const scanResult: ScannerResult = {
-        signal,
-        confidence,
-        pair: data.pair || "EURUSD",
-        timeframe: data.timeframe || "1H",
-        analysis: data.content,
-      };
-
-      setResult(scanResult);
-
-      // Auto-speak the recommendation
-      if (isSupported) {
-        const summary = `Trading Lens analysis complete. Recommendation: ${signal?.toUpperCase() || "HOLD"} with ${confidence}% confidence. ${data.content.slice(0, 200)}`;
-        speak(summary);
-      }
-    } catch (error) {
-      console.error("Analysis failed:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to analyze chart. Please try again.");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  }, [capturedImage, analyzeMutation, isSupported, speak]);
-
-  const handleSpeak = useCallback(() => {
-    if (!result) return;
-    const summary = `Trading Lens analysis for ${result.pair} on the ${result.timeframe} timeframe. Recommendation: ${result.signal?.toUpperCase() || "HOLD"} with ${result.confidence}% confidence. ${result.analysis.slice(0, 300)}`;
-    speak(summary);
-  }, [result, speak]);
-
-  const handleSelectHistory = useCallback((item: ScanHistoryItem) => {
-    setResult({
-      signal: item.signal,
-      confidence: item.confidence,
-      pair: item.pair,
-      timeframe: item.timeframe,
-      analysis: item.content,
-    });
-  }, []);
-
-  const handleDeleteScan = useCallback(
-    async (id: string) => {
-      try {
-        await deleteScanMutation.mutateAsync(id);
-        toast.success("Scan deleted successfully");
-      } catch (error) {
-        console.error("Failed to delete scan:", error);
-        toast.error(error instanceof Error ? error.message : "Failed to delete scan. Please try again.");
-      }
-    },
-    [deleteScanMutation]
-  );
-
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
-      <Navbar user={session?.user} />
+      <Navbar />
 
       {/* Background effects */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -160,89 +63,7 @@ export default function TradingLensPage() {
 
       {/* Scanner */}
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
-        <TradingScanner
-          onImageCapture={handleImageCapture}
-          onScanComplete={handleScanComplete}
-          isAnalyzing={isAnalyzing}
-          className="mb-8"
-        />
-
-        {/* Result */}
-        <AnimatePresence mode="wait">
-          {result && (
-            <motion.div
-              key="result"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.5 }}
-            >
-              <ScanResult
-                result={result}
-                onSpeak={handleSpeak}
-                isSpeaking={isSpeaking}
-                isSupported={isSupported}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Live region for scan completion announcements */}
-        <div aria-live="polite" aria-atomic="true" className="sr-only">
-          {result &&
-            `Analysis complete. Recommendation: ${result.signal?.toUpperCase() || "HOLD"} with ${result.confidence}% confidence.`}
-        </div>
-
-        {/* Empty state hint */}
-        {!result && !isAnalyzing && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="text-center mt-12"
-          >
-            <p className="text-sm text-muted-foreground">
-              Point your camera at a chart or upload a screenshot to begin scanning.
-            </p>
-          </motion.div>
-        )}
-
-        {/* Scan history gallery */}
-        {isHistoryLoading ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mt-16"
-          >
-            <div className="flex items-center gap-2 mb-4">
-              <div className="h-5 w-5 rounded-full bg-primary/10 animate-pulse" />
-              <div className="h-5 w-32 rounded bg-primary/10 animate-pulse" />
-              <div className="ml-auto h-4 w-16 rounded bg-primary/10 animate-pulse" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-64 rounded-xl border border-primary/10 bg-card/40 animate-pulse"
-                />
-              ))}
-            </div>
-          </motion.div>
-        ) : scanHistory && scanHistory.length > 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="mt-16"
-          >
-            <ScanHistoryGallery
-              items={scanHistory}
-              onSelect={handleSelectHistory}
-              onDelete={handleDeleteScan}
-              isDeleting={deleteScanMutation.isPending}
-            />
-          </motion.div>
-        ) : null}
+        <TradingLensCore />
       </div>
 
       {/* How it works */}
@@ -285,5 +106,3 @@ export default function TradingLensPage() {
     </div>
   );
 }
-
-
