@@ -164,12 +164,10 @@ export function TradingScanner({
   };
 
   return (
-    <motion.div
-      layout
-      transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+    <div
       ref={containerRef}
       className={cn(
-        "relative w-full overflow-hidden border border-primary/20 bg-card/40 backdrop-blur-xl transition-all duration-500",
+        "relative w-full overflow-hidden border border-primary/20 bg-card/40 backdrop-blur-xl transition-all duration-300",
         isExpanded
           ? "w-full min-h-[60vh] sm:min-h-[70vh] rounded-3xl flex flex-col shadow-2xl shadow-primary/10"
           : "max-w-3xl mx-auto rounded-3xl",
@@ -250,10 +248,8 @@ export function TradingScanner({
       </div>
 
       {/* Scan viewport */}
-      <motion.div
-        layout="position"
-        transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-        className={cn("relative bg-black/40 overflow-hidden", isExpanded ? "flex-1" : "aspect-video")}
+      <div
+        className={cn("relative bg-black/40 overflow-hidden transition-all duration-300", isExpanded ? "flex-1" : "aspect-video")}
       >
         {!hasImage ? (
           <>
@@ -347,7 +343,7 @@ export function TradingScanner({
             </AnimatePresence>
           </div>
         )}
-      </motion.div>
+      </div>
 
       {/* Footer controls */}
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-t border-primary/10">
@@ -417,7 +413,7 @@ export function TradingScanner({
           </div>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }
 
