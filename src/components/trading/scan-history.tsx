@@ -1,15 +1,26 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, TrendingUp, TrendingDown, Minus, Clock, BarChart3 } from "lucide-react";
+import { Calendar, TrendingUp, TrendingDown, Minus, Clock, BarChart3, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { ScanHistoryItem } from "@/lib/hooks/use-trading";
 
 interface ScanHistoryGalleryProps {
   items: ScanHistoryItem[];
   onSelect?: (item: ScanHistoryItem) => void;
+  onDelete?: (id: string) => void;
+  isDeleting?: boolean;
   className?: string;
 }
 
@@ -45,10 +56,16 @@ function signalClass(signal: ScanHistoryItem["signal"]) {
   }
 }
 
-export function ScanHistoryGallery({ items, onSelect, className }: ScanHistoryGalleryProps) {
+export function ScanHistoryGallery({ items, onSelect, onDelete, isDeleting, className }: ScanHistoryGalleryProps) {
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+
   const sorted = useMemo(() => {
     return [...items].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [items]);
+
+  const pendingItem = useMemo(() => {
+    return sorted.find((item) => item.id === pendingDelete) || null;
+  }, [sorted, pendingDelete]);
 
   if (items.length === 0) return null;
 
@@ -72,17 +89,31 @@ export function ScanHistoryGallery({ items, onSelect, className }: ScanHistoryGa
               transition={{ duration: 0.3, delay: index * 0.05 }}
             >
               <Card
-                role="button"
-                tabIndex={0}
-                onClick={() => onSelect?.(item)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onSelect?.(item);
-                  }
-                }}
-                className="group relative overflow-hidden border border-primary/10 bg-card/40 backdrop-blur-sm hover:border-primary/30 hover:bg-card/60 transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
+                className="group relative overflow-hidden border border-primary/10 bg-card/40 backdrop-blur-sm hover:border-primary/30 hover:bg-card/60 transition-all"
               >
+                {/* Clickable overlay for selecting the scan */}
+                <button
+                  onClick={() => onSelect?.(item)}
+                  className="absolute inset-0 z-0 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none"
+                  aria-label={`View analysis for ${item.pair}`}
+                />
+
+                {/* Delete button */}
+                {onDelete && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPendingDelete(item.id);
+                    }}
+                    disabled={isDeleting}
+                    aria-label={`Delete analysis for ${item.pair}`}
+                    className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-black/40 text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-destructive/20 hover:text-destructive transition-all"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
                 {/* Top accent line */}
                 <div
                   className={cn(
@@ -164,6 +195,42 @@ export function ScanHistoryGallery({ items, onSelect, className }: ScanHistoryGa
           ))}
         </AnimatePresence>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={!!pendingDelete} onOpenChange={(open: boolean) => !open && setPendingDelete(null)}>
+        <DialogContent className="border border-primary/10 bg-card/90 backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle>Delete scan?</DialogTitle>
+            <DialogDescription>
+              {pendingItem ? (
+                <>
+                  This will permanently remove the <strong>{pendingItem.pair}</strong> scan from
+                  your history. This action cannot be undone.
+                </>
+              ) : (
+                "This action cannot be undone."
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (pendingDelete) {
+                  onDelete?.(pendingDelete);
+                  setPendingDelete(null);
+                }
+              }}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

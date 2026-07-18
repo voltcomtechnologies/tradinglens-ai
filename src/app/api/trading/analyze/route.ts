@@ -179,6 +179,59 @@ export async function GET() {
   }
 }
 
+export async function DELETE(request: NextRequest) {
+  let session;
+  try {
+    session = await auth();
+  } catch (authError) {
+    const authErr = toError(authError);
+    console.error("[analyze] Auth error:", authErr.message, authErr.stack);
+    return NextResponse.json(
+      { error: "Unauthorized", detail: authErr.message },
+      { status: 401 }
+    );
+  }
+
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+
+  if (!id) {
+    return NextResponse.json({ error: "Analysis ID is required" }, { status: 400 });
+  }
+
+  try {
+    // Verify ownership before deleting
+    const existing = await prisma.chartAnalysis.findFirst({
+      where: { id, userId: session.user.id },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Analysis not found" },
+        { status: 404 }
+      );
+    }
+
+    await prisma.chartAnalysis.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    const err = toError(error);
+    console.error("[analyze] Failed to delete analysis:", err.message);
+    return NextResponse.json(
+      { error: "Failed to delete analysis" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   let session;
   try {

@@ -113,6 +113,20 @@ export function useScanHistory(enabled = true) {
   });
 }
 
+export function useDeleteScan() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data } = await axios.delete(`/api/trading/analyze?id=${encodeURIComponent(id)}`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["scan-history"] });
+    },
+  });
+}
+
 export function useNotifications(unreadOnly = false) {
   const params = unreadOnly ? "?unreadOnly=true" : "";
   return useQuery({

@@ -10,7 +10,7 @@ import { TradingScanner, type ScannerResult } from "@/components/trading/scanner
 import { ScanResult } from "@/components/trading/scan-result";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { useAnalyzeChart, useScanHistory } from "@/lib/hooks/use-trading";
+import { useAnalyzeChart, useScanHistory, useDeleteScan } from "@/lib/hooks/use-trading";
 import { useVoice } from "@/lib/hooks/use-voice";
 import { dataUrlToFile } from "@/lib/utils";
 import { ScanHistoryGallery } from "@/components/trading/scan-history";
@@ -23,6 +23,7 @@ export default function TradingLensPage() {
 
   const analyzeMutation = useAnalyzeChart();
   const { data: scanHistory, isLoading: isHistoryLoading } = useScanHistory(!!session?.user);
+  const deleteScanMutation = useDeleteScan();
   const { speak, isSpeaking, isSupported } = useVoice({ rate: 0.95, volume: 1 });
 
   const handleImageCapture = useCallback((imageData: string | File) => {
@@ -89,6 +90,19 @@ export default function TradingLensPage() {
       analysis: item.content,
     });
   }, []);
+
+  const handleDeleteScan = useCallback(
+    async (id: string) => {
+      try {
+        await deleteScanMutation.mutateAsync(id);
+        toast.success("Scan deleted successfully");
+      } catch (error) {
+        console.error("Failed to delete scan:", error);
+        toast.error(error instanceof Error ? error.message : "Failed to delete scan. Please try again.");
+      }
+    },
+    [deleteScanMutation]
+  );
 
   return (
     <div className="relative min-h-screen bg-background overflow-hidden">
@@ -221,7 +235,12 @@ export default function TradingLensPage() {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="mt-16"
           >
-            <ScanHistoryGallery items={scanHistory} onSelect={handleSelectHistory} />
+            <ScanHistoryGallery
+              items={scanHistory}
+              onSelect={handleSelectHistory}
+              onDelete={handleDeleteScan}
+              isDeleting={deleteScanMutation.isPending}
+            />
           </motion.div>
         ) : null}
       </div>
