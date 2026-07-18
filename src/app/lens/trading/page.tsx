@@ -27,11 +27,11 @@ export default function TradingLensPage() {
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-3">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
               <span className="gradient-text glow-text">Trading Lens</span>
             </h1>
 
-            <p className="text-base text-muted-foreground max-w-2xl mx-auto mb-6">
+            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto mb-6">
               Snap or upload a forex chart and let our AI analyze it in real-time.
             </p>
 

@@ -13,11 +13,11 @@ export default function DashboardTradingLensPage() {
         animate={{ opacity: 1, y: 0 }}
         className="text-center"
       >
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-3">
           <span className="gradient-text glow-text">Trading Lens</span>
         </h1>
 
-        <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
+        <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
           Snap or upload a forex chart for instant AI analysis.
         </p>
 
