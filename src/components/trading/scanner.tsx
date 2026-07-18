@@ -47,7 +47,7 @@ export function TradingScanner({
   const [permissionStatus, setPermissionStatus] = useState<"prompt" | "granted" | "denied">("prompt");
   const [isRequestingCamera, setIsRequestingCamera] = useState(true);
   const [announcement, setAnnouncement] = useState<string>("");
-  const [isFullscreen, setIsFullscreen] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(true);
   const hasAnnouncedGranted = useRef(false);
   const webcamRef = useRef<Webcam>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -148,19 +148,19 @@ export function TradingScanner({
     return () => clearTimeout(timer);
   }, [announcement]);
 
-  // Exit fullscreen on Escape key
+  // Collapse expanded view on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isFullscreen) {
-        setIsFullscreen(false);
+      if (e.key === "Escape" && isExpanded) {
+        setIsExpanded(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isFullscreen]);
+  }, [isExpanded]);
 
-  const toggleFullscreen = () => {
-    setIsFullscreen((prev) => !prev);
+  const toggleExpanded = () => {
+    setIsExpanded((prev) => !prev);
   };
 
   return (
@@ -170,7 +170,7 @@ export function TradingScanner({
       ref={containerRef}
       className={cn(
         "relative w-full overflow-hidden border border-primary/20 bg-card/40 backdrop-blur-xl transition-all duration-500",
-        isFullscreen
+        isExpanded
           ? "w-full min-h-[60vh] sm:min-h-[70vh] rounded-3xl flex flex-col shadow-2xl shadow-primary/10"
           : "max-w-3xl mx-auto rounded-3xl",
         className
@@ -201,20 +201,20 @@ export function TradingScanner({
           </div>
         </div>
 
-        {/* Fullscreen toggle */}
+        {/* Expand toggle */}
         <div className="flex items-center gap-2">
           <button
-            onClick={toggleFullscreen}
-            aria-pressed={isFullscreen}
-            aria-label={isFullscreen ? "Compact scanner" : "Expand scanner"}
+            onClick={toggleExpanded}
+            aria-pressed={isExpanded}
+            aria-label={isExpanded ? "Compact scanner" : "Expand scanner"}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-all border border-transparent hover:border-primary/20"
           >
-            {isFullscreen ? (
+            {isExpanded ? (
               <Minimize className="h-3.5 w-3.5" />
             ) : (
               <Maximize className="h-3.5 w-3.5" />
             )}
-            {isFullscreen ? "Compact" : "Expand"}
+            {isExpanded ? "Compact" : "Expand"}
           </button>
 
           {/* Mode toggle */}
@@ -253,7 +253,7 @@ export function TradingScanner({
       <motion.div
         layout="position"
         transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-        className={cn("relative bg-black/40 overflow-hidden", isFullscreen ? "flex-1" : "aspect-video")}
+        className={cn("relative bg-black/40 overflow-hidden", isExpanded ? "flex-1" : "aspect-video")}
       >
         {!hasImage ? (
           <>
