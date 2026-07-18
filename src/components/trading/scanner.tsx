@@ -47,7 +47,7 @@ export function TradingScanner({
   const [permissionStatus, setPermissionStatus] = useState<"prompt" | "granted" | "denied">("prompt");
   const [isRequestingCamera, setIsRequestingCamera] = useState(true);
   const [announcement, setAnnouncement] = useState<string>("");
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(true);
   const hasAnnouncedGranted = useRef(false);
   const webcamRef = useRef<Webcam>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -164,25 +164,34 @@ export function TradingScanner({
   };
 
   return (
-    <div
+    <motion.div
+      layout
+      transition={{ type: "spring", bounce: 0, duration: 0.4 }}
       ref={containerRef}
       className={cn(
-        "relative w-full overflow-hidden border border-primary/20 bg-card/40 backdrop-blur-xl transition-all duration-300",
+        "relative w-full overflow-hidden border border-primary/20 bg-card/40 backdrop-blur-xl transition-all duration-500",
         isFullscreen
-          ? "fixed inset-0 z-50 rounded-none max-w-none mx-0 h-screen flex flex-col"
+          ? "w-full min-h-[60vh] sm:min-h-[70vh] rounded-3xl flex flex-col shadow-2xl shadow-primary/10"
           : "max-w-3xl mx-auto rounded-3xl",
         className
       )}
     >
-      {/* Top accent bar */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary z-20" />
+      {/* Animated top accent bar */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary z-20 animate-pulse" />
+
+      {/* Subtle animated grid background */}
+      <div className="absolute inset-0 z-0 opacity-30 pointer-events-none">
+        <div className="absolute inset-0 bg-[linear-gradient(hsl(var(--primary)/0.08)_1px,transparent_1px),linear-gradient(90deg,hsl(var(--primary)/0.08)_1px,transparent_1px)] bg-[size:60px_60px]" />
+      </div>
 
       {/* Header */}
       <div className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-primary/10">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="absolute inset-0 bg-primary/30 rounded-lg blur-md animate-pulse" />
-            <Scan className="relative h-5 w-5 text-primary" />
+            <div className="absolute inset-0 bg-primary/40 rounded-xl blur-lg animate-pulse" />
+            <div className="relative p-2.5 rounded-xl bg-primary/10 border border-primary/20">
+              <Scan className="h-5 w-5 text-primary" />
+            </div>
           </div>
           <div>
             <h3 className="text-sm font-bold tracking-wider uppercase text-foreground">
@@ -197,19 +206,19 @@ export function TradingScanner({
           <button
             onClick={toggleFullscreen}
             aria-pressed={isFullscreen}
-            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
+            aria-label={isFullscreen ? "Compact scanner" : "Expand scanner"}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-all border border-transparent hover:border-primary/20"
           >
             {isFullscreen ? (
               <Minimize className="h-3.5 w-3.5" />
             ) : (
               <Maximize className="h-3.5 w-3.5" />
             )}
-            {isFullscreen ? "Exit" : "Fullscreen"}
+            {isFullscreen ? "Compact" : "Expand"}
           </button>
 
           {/* Mode toggle */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/50 border border-border/50">
+          <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/50 border border-border/50 shadow-inner">
           <button
             onClick={() => setMode("camera")}
             aria-pressed={mode === "camera"}
@@ -241,7 +250,11 @@ export function TradingScanner({
       </div>
 
       {/* Scan viewport */}
-      <div className={cn("relative bg-black/40 overflow-hidden", isFullscreen ? "flex-1" : "aspect-video")}>
+      <motion.div
+        layout="position"
+        transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+        className={cn("relative bg-black/40 overflow-hidden", isFullscreen ? "flex-1" : "aspect-video")}
+      >
         {!hasImage ? (
           <>
             {mode === "camera" ? (
@@ -316,11 +329,11 @@ export function TradingScanner({
               </div>
             )}
 
-            {/* Corner brackets */}
-            <div className="absolute top-4 left-4 w-8 h-8 border-l-2 border-t-2 border-primary/60 rounded-tl-lg" />
-            <div className="absolute top-4 right-4 w-8 h-8 border-r-2 border-t-2 border-primary/60 rounded-tr-lg" />
-            <div className="absolute bottom-4 left-4 w-8 h-8 border-l-2 border-b-2 border-primary/60 rounded-bl-lg" />
-            <div className="absolute bottom-4 right-4 w-8 h-8 border-r-2 border-b-2 border-primary/60 rounded-br-lg" />
+            {/* Animated corner brackets */}
+            <div className="absolute top-4 left-4 w-10 h-10 border-l-2 border-t-2 border-primary/80 rounded-tl-lg shadow-[0_0_12px_hsl(var(--primary)/0.4)]" />
+            <div className="absolute top-4 right-4 w-10 h-10 border-r-2 border-t-2 border-primary/80 rounded-tr-lg shadow-[0_0_12px_hsl(var(--primary)/0.4)]" />
+            <div className="absolute bottom-4 left-4 w-10 h-10 border-l-2 border-b-2 border-primary/80 rounded-bl-lg shadow-[0_0_12px_hsl(var(--primary)/0.4)]" />
+            <div className="absolute bottom-4 right-4 w-10 h-10 border-r-2 border-b-2 border-primary/80 rounded-br-lg shadow-[0_0_12px_hsl(var(--primary)/0.4)]" />
           </>
         ) : (
           <div className="absolute inset-0">
@@ -334,7 +347,7 @@ export function TradingScanner({
             </AnimatePresence>
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* Footer controls */}
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-t border-primary/10">
@@ -344,7 +357,7 @@ export function TradingScanner({
               <Button
                 onClick={handleCapture}
                 disabled={permissionStatus === "denied"}
-                className="bg-primary hover:bg-primary/90 glow-orange"
+                className="bg-primary hover:bg-primary/90 glow-orange shadow-lg shadow-primary/20"
               >
                 <Camera className="h-4 w-4 mr-2" />
                 Snap Chart
@@ -404,7 +417,7 @@ export function TradingScanner({
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
 

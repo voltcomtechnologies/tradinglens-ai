@@ -106,7 +106,6 @@ export function TradingLensCore() {
         onImageCapture={handleImageCapture}
         onScanComplete={handleScanComplete}
         isAnalyzing={isAnalyzing}
-        className="mb-8"
       />
 
       {/* Result */}

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Sparkles, Shield, Zap, Brain } from "lucide-react";
+import { Shield, Zap, Brain } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { TradingLensCore } from "@/components/trading/trading-lens-core";
@@ -19,7 +19,7 @@ export default function TradingLensPage() {
       </div>
 
       {/* Header */}
-      <div className="relative z-10 pt-24 pb-8">
+      <div className="relative z-10 pt-20 pb-6">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -27,22 +27,16 @@ export default function TradingLensPage() {
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 text-primary text-sm font-medium mb-6 backdrop-blur-sm">
-              <Sparkles className="h-4 w-4 animate-pulse" />
-              AI Chart Scanner
-            </div>
-
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-4">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-3">
               <span className="gradient-text glow-text">Trading Lens</span>
             </h1>
 
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
+            <p className="text-base text-muted-foreground max-w-2xl mx-auto mb-6">
               Snap or upload a forex chart and let our AI analyze it in real-time.
-              Get instant BUY, SELL, or HOLD signals with voice guidance.
             </p>
 
             {/* Feature pills */}
-            <div className="flex flex-wrap items-center justify-center gap-3 mb-12">
+            <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
               {[
                 { icon: Brain, label: "AI Analysis" },
                 { icon: Zap, label: "Real-time" },
@@ -50,9 +44,9 @@ export default function TradingLensPage() {
               ].map(({ icon: Icon, label }) => (
                 <div
                   key={label}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-card/40 border border-primary/10 text-sm text-muted-foreground"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card/40 border border-primary/10 text-xs text-muted-foreground"
                 >
-                  <Icon className="h-4 w-4 text-primary" />
+                  <Icon className="h-3.5 w-3.5 text-primary" />
                   {label}
                 </div>
               ))}
