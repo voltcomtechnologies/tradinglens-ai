@@ -174,7 +174,10 @@
     "exitFullscreen": "Свернуть",
     "editCourse": "Редактировать курс",
     "doneEditing": "Завершить редактирование",
-    "proModeDisabledHint": "Редактирование недоступно на этой странице — откройте слайд курса, чтобы редактировать в Pro-режиме."
+    "proModeDisabledHint": "Редактирование недоступно на этой странице — откройте слайд курса, чтобы редактировать в Pro-режиме.",
+    "enableAudioTitle": "Включить звук",
+    "enableAudioMessage": "Браузер заблокировал автовоспроизведение звука. Нажмите ниже, чтобы включить звук.",
+    "enableAudioAction": "Включить звук"
   },
   "edit": {
     "proMode": "Pro",
@@ -534,7 +537,9 @@
     "voiceInputDisabled": "Голосовой ввод отключён",
     "textInput": "Текстовый ввод",
     "stopRecording": "Остановить запись",
-    "startRecording": "Начать запись"
+    "startRecording": "Начать запись",
+    "soundOn": "Sound On",
+    "soundOnHint": "Click to enable AI teacher voice"
   },
   "pbl": {
     "legacyFormat": "Эта PBL-сцена использует устаревший формат. Пожалуйста, перегенерируйте курс.",

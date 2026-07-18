@@ -20,6 +20,8 @@ interface DiscussionTTSOptions {
   enabled: boolean;
   agents: AgentConfig[];
   onAudioStateChange?: (agentId: string | null, state: AudioIndicatorState) => void;
+  /** Called when HTMLAudioElement playback is blocked by the browser's autoplay policy. */
+  onAutoplayBlocked?: () => void;
 }
 
 interface QueueItem {
@@ -32,7 +34,12 @@ interface QueueItem {
   voiceId: string;
 }
 
-export function useDiscussionTTS({ enabled, agents, onAudioStateChange }: DiscussionTTSOptions) {
+export function useDiscussionTTS({
+  enabled,
+  agents,
+  onAudioStateChange,
+  onAutoplayBlocked,
+}: DiscussionTTSOptions) {
   const { locale } = useI18n();
   const ttsProvidersConfig = useSettingsStore((s) => s.ttsProvidersConfig);
   const ttsSpeed = useSettingsStore((s) => s.ttsSpeed);
@@ -55,6 +62,8 @@ export function useDiscussionTTS({ enabled, agents, onAudioStateChange }: Discus
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const onAudioStateChangeRef = useRef(onAudioStateChange);
   onAudioStateChangeRef.current = onAudioStateChange;
+  const onAutoplayBlockedRef = useRef(onAutoplayBlocked);
+  onAutoplayBlockedRef.current = onAutoplayBlocked;
   const processQueueRef = useRef<() => void>(() => {});
 
   const {
@@ -247,7 +256,9 @@ export function useDiscussionTTS({ enabled, agents, onAudioStateChange }: Discus
       onAudioStateChangeRef.current?.(item.agentId, 'playing');
       await audio.play();
     } catch (err) {
-      if ((err as Error).name !== 'AbortError') {
+      if ((err as Error).name === 'NotAllowedError') {
+        onAutoplayBlockedRef.current?.();
+      } else if ((err as Error).name !== 'AbortError') {
         console.error('[DiscussionTTS] TTS generation failed:', err);
       }
       audioRef.current = null;

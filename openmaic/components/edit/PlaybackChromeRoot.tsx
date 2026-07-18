@@ -51,7 +51,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Volume2 } from 'lucide-react';
 import { VisuallyHidden } from 'radix-ui';
 
 /**
@@ -148,6 +148,8 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
 
     // Scene switch confirmation dialog state
     const [pendingSceneId, setPendingSceneId] = useState<string | null>(null);
+    // Autoplay-blocked prompt state
+    const [autoplayBlocked, setAutoplayBlocked] = useState(false);
     const [isPresenting, setIsPresenting] = useState(false);
     const [controlsVisible, setControlsVisible] = useState(true);
     const [isPresentationInteractionActive, setIsPresentationInteractionActive] = useState(false);
@@ -186,6 +188,9 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
       onAudioStateChange: (agentId, state) => {
         setAudioAgentId(agentId);
         setAudioIndicatorState(state);
+      },
+      onAutoplayBlocked: () => {
+        setAutoplayBlocked(true);
       },
     });
 
@@ -565,6 +570,9 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
       const engine = new PlaybackEngine([currentScene], actionEngine, audioPlayerRef.current, {
         onModeChange: (mode) => {
           setEngineMode(mode);
+        },
+        onAutoplayBlocked: () => {
+          setAutoplayBlocked(true);
         },
         onProgress: (snapshot) => {
           updateCurrentPlaybackActionIndex(snapshot.actionIndex);
@@ -1459,6 +1467,53 @@ export const PlaybackChromeRoot = forwardRef<PlaybackChromeRootHandle, PlaybackC
             shouldHoldAfterReveal={discussionTTS.shouldHold}
           />
         </div>
+
+        {/* Enable audio prompt — shown when browser autoplay policy blocks TTS */}
+        <AlertDialog
+          open={autoplayBlocked}
+          onOpenChange={(open) => {
+            if (!open) setAutoplayBlocked(false);
+          }}
+        >
+          <AlertDialogContent
+            container={isPresenting ? stageRef.current : undefined}
+            className="max-w-sm rounded-2xl p-0 overflow-hidden border-0 shadow-[0_25px_60px_-12px_rgba(0,0,0,0.15)] dark:shadow-[0_25px_60px_-12px_rgba(0,0,0,0.5)]"
+          >
+            <VisuallyHidden.Root>
+              <AlertDialogTitle>{t('stage.enableAudioTitle')}</AlertDialogTitle>
+            </VisuallyHidden.Root>
+            {/* Top accent bar */}
+            <div className="h-1 bg-gradient-to-r from-violet-400 via-purple-400 to-fuchsia-400" />
+
+            <div className="px-6 pt-5 pb-2 flex flex-col items-center text-center">
+              {/* Icon */}
+              <div className="w-12 h-12 rounded-full bg-violet-50 dark:bg-violet-900/20 flex items-center justify-center mb-4 ring-1 ring-violet-200/50 dark:ring-violet-700/30">
+                <Volume2 className="w-6 h-6 text-violet-500 dark:text-violet-400" />
+              </div>
+              {/* Title */}
+              <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-1.5">
+                {t('stage.enableAudioTitle')}
+              </h3>
+              {/* Description */}
+              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                {t('stage.enableAudioMessage')}
+              </p>
+            </div>
+
+            <AlertDialogFooter className="px-6 pb-5 pt-3 flex-row gap-3">
+              <AlertDialogAction
+                onClick={() => {
+                  setAutoplayBlocked(false);
+                  // User gesture unlocks audio; resume playback from where it stalled.
+                  engineRef.current?.resume();
+                }}
+                className="flex-1 rounded-xl bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white border-0 shadow-md shadow-violet-200/50 dark:shadow-violet-900/30"
+              >
+                {t('stage.enableAudioAction')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Scene switch confirmation dialog */}
         <AlertDialog

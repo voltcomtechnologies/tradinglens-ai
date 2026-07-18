@@ -449,7 +449,10 @@
     "exitFullscreen": "Sair da tela cheia",
     "editCourse": "Editar curso",
     "doneEditing": "Concluir edição",
-    "proModeDisabledHint": "A edição não está disponível nesta página — abra um slide do curso para editar no modo Pro."
+    "proModeDisabledHint": "A edição não está disponível nesta página — abra um slide do curso para editar no modo Pro.",
+    "enableAudioTitle": "Ativar Áudio",
+    "enableAudioMessage": "Seu navegador bloqueou a reprodução de áudio. Clique abaixo para ativar o som.",
+    "enableAudioAction": "Ativar Áudio"
   },
   "classroomComplete": {
     "title": "Curso concluído",
@@ -534,7 +537,9 @@
     "voiceInputDisabled": "Entrada por voz desativada",
     "textInput": "Entrada por texto",
     "stopRecording": "Parar gravação",
-    "startRecording": "Iniciar gravação"
+    "startRecording": "Iniciar gravação",
+    "soundOn": "Sound On",
+    "soundOnHint": "Click to enable AI teacher voice"
   },
   "pbl": {
     "legacyFormat": "Esta cena PBL usa um formato antigo. Gere o curso novamente.",

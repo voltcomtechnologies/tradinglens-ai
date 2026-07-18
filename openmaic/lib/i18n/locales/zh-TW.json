@@ -174,7 +174,10 @@
     "courseComplete": "課程完成",
     "editCourse": "編輯課程",
     "doneEditing": "完成編輯",
-    "proModeDisabledHint": "本頁不支援編輯——開啟任一課程頁即可使用 Pro 模式編輯。"
+    "proModeDisabledHint": "本頁不支援編輯——開啟任一課程頁即可使用 Pro 模式編輯。",
+    "enableAudioTitle": "啟用音訊",
+    "enableAudioMessage": "瀏覽器阻止了音訊自動播放。點擊下方按鈕啟用聲音。",
+    "enableAudioAction": "啟用音訊"
   },
   "edit": {
     "proMode": "專業模式",
@@ -519,7 +522,9 @@
     "voiceInputDisabled": "語音輸入已停用",
     "textInput": "文字輸入",
     "stopRecording": "停止錄音",
-    "startRecording": "開始錄音"
+    "startRecording": "開始錄音",
+    "soundOn": "Sound On",
+    "soundOnHint": "Click to enable AI teacher voice"
   },
   "pbl": {
     "legacyFormat": "此PBL場景使用舊格式，請重新生成課程",

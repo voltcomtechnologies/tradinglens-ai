@@ -105,6 +105,15 @@ export class PlaybackEngine {
     this.actionEngine = actionEngine;
     this.audioPlayer = audioPlayer;
     this.callbacks = callbacks;
+
+    // Wire up autoplay-block detection so the UI can prompt the user to
+    // interact with the page and unlock audio.
+    this.audioPlayer.onAutoplayBlocked(() => {
+      if (this.mode === 'playing') {
+        this.pause();
+      }
+      this.callbacks.onAutoplayBlocked?.();
+    });
   }
 
   // ==================== Public API ====================

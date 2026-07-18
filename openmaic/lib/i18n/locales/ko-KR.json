@@ -174,7 +174,10 @@
     "exitFullscreen": "전체화면 종료",
     "editCourse": "강좌 편집",
     "doneEditing": "편집 완료",
-    "proModeDisabledHint": "이 페이지에서는 편집할 수 없습니다 — 코스 슬라이드를 열면 Pro 모드로 편집할 수 있습니다."
+    "proModeDisabledHint": "이 페이지에서는 편집할 수 없습니다 — 코스 슬라이드를 열면 Pro 모드로 편집할 수 있습니다.",
+    "enableAudioTitle": "오디오 활성화",
+    "enableAudioMessage": "브라우저가 오디오 재생을 차단했습니다. 소리를 활성화하려면 아래를 클릭하세요.",
+    "enableAudioAction": "오디오 활성화"
   },
   "edit": {
     "proMode": "프로 모드",
@@ -534,7 +537,9 @@
     "voiceInputDisabled": "음성 입력 비활성화됨",
     "textInput": "텍스트 입력",
     "stopRecording": "녹음 중지",
-    "startRecording": "녹음 시작"
+    "startRecording": "녹음 시작",
+    "soundOn": "Sound On",
+    "soundOnHint": "Click to enable AI teacher voice"
   },
   "pbl": {
     "legacyFormat": "이 PBL 장면은 이전 형식을 사용합니다. 강좌를 다시 생성해주세요.",

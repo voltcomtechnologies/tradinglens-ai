@@ -168,6 +168,9 @@
     "generationFailed": "Generation failed",
     "confirmSwitchTitle": "Switch Scene",
     "confirmSwitchMessage": "A topic is currently in progress. Switching scenes will end the current topic. Are you sure?",
+    "enableAudioTitle": "Enable Audio",
+    "enableAudioMessage": "Your browser blocked audio playback. Click below to enable sound.",
+    "enableAudioAction": "Enable Audio",
     "generatingNextPage": "Scene is being generated, please wait...",
     "courseComplete": "Course complete",
     "fullscreen": "Fullscreen",
@@ -534,7 +537,9 @@
     "voiceInputDisabled": "Voice input disabled",
     "textInput": "Text input",
     "stopRecording": "Stop recording",
-    "startRecording": "Start recording"
+    "startRecording": "Start recording",
+    "soundOn": "Sound On",
+    "soundOnHint": "Click to enable AI teacher voice"
   },
   "pbl": {
     "legacyFormat": "This PBL scene uses a legacy format. Please regenerate the course.",

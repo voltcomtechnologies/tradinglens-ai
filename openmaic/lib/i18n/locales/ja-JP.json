@@ -174,7 +174,10 @@
     "exitFullscreen": "全画面表示を終了",
     "editCourse": "コースを編集",
     "doneEditing": "編集を完了",
-    "proModeDisabledHint": "このページでは編集できません。コースのスライドを開くと Pro モードで編集できます。"
+    "proModeDisabledHint": "このページでは編集できません。コースのスライドを開くと Pro モードで編集できます。",
+    "enableAudioTitle": "音声を有効にする",
+    "enableAudioMessage": "ブラウザが音声の自動再生をブロックしました。下のボタンをクリックして音声を有効にしてください。",
+    "enableAudioAction": "音声を有効にする"
   },
   "edit": {
     "proMode": "プロモード",
@@ -534,7 +537,9 @@
     "voiceInputDisabled": "音声入力無効",
     "textInput": "テキスト入力",
     "stopRecording": "録音を停止",
-    "startRecording": "録音を開始"
+    "startRecording": "録音を開始",
+    "soundOn": "Sound On",
+    "soundOnHint": "Click to enable AI teacher voice"
   },
   "pbl": {
     "legacyFormat": "このPBLシーンは旧形式です。コースを再生成してください。",

@@ -70,6 +70,7 @@ function createAudioPlayer(play?: (audioId: string, audioUrl?: string) => Promis
       onEnded: vi.fn((callback: () => void) => {
         ended = callback;
       }),
+      onAutoplayBlocked: vi.fn(),
       stop: vi.fn(),
       pause: vi.fn(),
       resume: vi.fn(),

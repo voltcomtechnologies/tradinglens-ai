@@ -174,7 +174,10 @@
     "exitFullscreen": "الخروج من ملء الشاشة",
     "editCourse": "تحرير الدورة",
     "doneEditing": "إنهاء التحرير",
-    "proModeDisabledHint": "التحرير غير متاح في هذه الصفحة — افتح شريحة من الدورة للتحرير باستخدام وضع Pro."
+    "proModeDisabledHint": "التحرير غير متاح في هذه الصفحة — افتح شريحة من الدورة للتحرير باستخدام وضع Pro.",
+    "enableAudioTitle": "تفعيل الصوت",
+    "enableAudioMessage": "حظر المتصفح تشغيل الصوت. انقر أدناه لتفعيل الصوت.",
+    "enableAudioAction": "تفعيل الصوت"
   },
   "edit": {
     "proMode": "احترافي",
@@ -534,7 +537,9 @@
     "voiceInputDisabled": "الإدخال الصوتي معطّل",
     "textInput": "إدخال نصي",
     "stopRecording": "إيقاف التسجيل",
-    "startRecording": "بدء التسجيل"
+    "startRecording": "بدء التسجيل",
+    "soundOn": "Sound On",
+    "soundOnHint": "Click to enable AI teacher voice"
   },
   "pbl": {
     "legacyFormat": "يستخدم مشهد التعلم القائم على المشاريع هذا تنسيقًا قديمًا. يرجى إعادة توليد المقرر.",

@@ -474,9 +474,9 @@ const getDefaultAudioConfig = () => ({
       modelId: 'kokoro-v1',
       enabled: true,
     },
-    // Browser-native is OFF by default — fully opt-in. Native voice quality is
-    // poor; it must never be a silent default (#665).
-    'browser-native-tts': { apiKey: '', baseUrl: '', enabled: false },
+    // Browser-native is ON by default — it requires no API key and guarantees
+    // the AI teacher speaks out of the box. Users can opt out in settings.
+    'browser-native-tts': { apiKey: '', baseUrl: '', enabled: true },
   } as Record<
     TTSProviderId,
     { apiKey: string; baseUrl: string; modelId?: string; enabled: boolean }
@@ -952,10 +952,10 @@ export const useSettingsStore = create<SettingsState>()(
         videoGenerationEnabled: false,
         reviewOutlineEnabled: false,
 
-        // TTS is OFF by default; auto-enabled on first server-sync when a TTS
-        // provider is configured (mirrors image/video). Fresh installs with no
-        // provider stay off and show an "enable browser-native" CTA (#665).
-        ttsEnabled: false,
+        // TTS is ON by default so the AI teacher speaks out of the box. Users
+        // can still disable it manually; browser-native TTS requires no API
+        // key and acts as the fallback provider (#665).
+        ttsEnabled: true,
         asrEnabled: true,
 
         // Off until the server reports a concurrency via fetchServerProviders.
@@ -1747,7 +1747,9 @@ export const useSettingsStore = create<SettingsState>()(
                     DEFAULT_TTS_VOICES[autoTtsProvider as BuiltInTTSProviderId] || 'default';
                 }
                 // Auto-enable TTS on first run when a server provider exists
-                // (mirrors image/video). No provider ⇒ stays off + CTA.
+                // (mirrors image/video). TTS is already ON by default using
+                // browser-native, so this only enables legacy users who still
+                // have the old default (off).
                 if (serverTtsIds.length > 0 && !state.ttsEnabled) {
                   autoTtsEnabled = true;
                 }
@@ -1983,10 +1985,10 @@ export const useSettingsStore = create<SettingsState>()(
           state.reviewOutlineEnabled = false;
         }
 
-        // Add default audio toggles if missing. TTS defaults OFF (opt-in / CTA);
-        // first server-sync auto-enables it when a provider is configured (#665).
+        // Add default audio toggles if missing. TTS defaults ON so the AI
+        // teacher speaks out of the box; users can still disable it manually.
         if ((state as Record<string, unknown>).ttsEnabled === undefined) {
-          (state as Record<string, unknown>).ttsEnabled = false;
+          (state as Record<string, unknown>).ttsEnabled = true;
         }
         if ((state as Record<string, unknown>).asrEnabled === undefined) {
           (state as Record<string, unknown>).asrEnabled = true;
@@ -2071,12 +2073,12 @@ export const useSettingsStore = create<SettingsState>()(
         // v3 → v4: the per-provider `enabled` flag becomes live under the
         // unified enablement model (#665). Before v4 it was never user-editable,
         // so any persisted value is just a stale default — normalize it:
-        // browser-native OFF (opt-in), every other built-in ON (it only surfaces
-        // once configured, so a server-managed provider must not stay hidden).
+        // all built-in TTS providers ON (browser-native requires no API key and
+        // guarantees the AI teacher speaks out of the box).
         if (version < 4 && state.ttsProvidersConfig) {
           for (const pid of Object.keys(TTS_PROVIDERS) as BuiltInTTSProviderId[]) {
             const cfg = state.ttsProvidersConfig[pid];
-            if (cfg) cfg.enabled = pid !== 'browser-native-tts';
+            if (cfg) cfg.enabled = true;
           }
         }
 

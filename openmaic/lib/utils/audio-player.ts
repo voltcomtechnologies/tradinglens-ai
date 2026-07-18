@@ -17,10 +17,12 @@ const log = createLogger('AudioPlayer');
 export class AudioPlayer {
   private audio: HTMLAudioElement | null = null;
   private onEndedCallback: (() => void) | null = null;
+  private onAutoplayBlockedCallback: (() => void) | null = null;
   private muted: boolean = false;
   private volume: number = 1;
   private playbackRate: number = 1;
   private requestToken: number = 0;
+  private autoplayBlocked: boolean = false;
 
   private stopAudioElement(): void {
     if (this.audio) {
@@ -55,6 +57,7 @@ export class AudioPlayer {
         await this.audio.play();
         if (requestToken !== this.requestToken) return false;
         this.audio.playbackRate = this.playbackRate;
+        this.autoplayBlocked = false;
         return true;
       }
 
@@ -97,6 +100,11 @@ export class AudioPlayer {
         await this.audio.play();
       } catch (playError) {
         URL.revokeObjectURL(blobUrl);
+        if (this.isAutoplayBlockedError(playError)) {
+          this.autoplayBlocked = true;
+          this.onAutoplayBlockedCallback?.();
+          return false;
+        }
         throw playError;
       }
       if (requestToken !== this.requestToken) {
@@ -140,6 +148,11 @@ export class AudioPlayer {
     if (this.audio?.paused) {
       this.audio.playbackRate = this.playbackRate;
       this.audio.play().catch((error) => {
+        if (this.isAutoplayBlockedError(error)) {
+          this.autoplayBlocked = true;
+          this.onAutoplayBlockedCallback?.();
+          return;
+        }
         log.error('Failed to resume audio:', error);
       });
     }
@@ -179,6 +192,26 @@ export class AudioPlayer {
    */
   public onEnded(callback: () => void): void {
     this.onEndedCallback = callback;
+  }
+
+  /**
+   * Set autoplay-blocked callback. Called when HTMLAudioElement.play() rejects
+   * due to browser autoplay policy (NotAllowedError).
+   */
+  public onAutoplayBlocked(callback: () => void): void {
+    this.onAutoplayBlockedCallback = callback;
+  }
+
+  /**
+   * Returns true if the last play attempt was blocked by the browser's
+   * autoplay policy. Resets once a successful play occurs.
+   */
+  public isAutoplayBlocked(): boolean {
+    return this.autoplayBlocked;
+  }
+
+  private isAutoplayBlockedError(error: unknown): boolean {
+    return error instanceof DOMException && error.name === 'NotAllowedError';
   }
 
   /**

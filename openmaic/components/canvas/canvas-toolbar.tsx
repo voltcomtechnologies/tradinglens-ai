@@ -46,6 +46,7 @@ export interface CanvasToolbarProps {
   readonly ttsVolume?: number;
   readonly onToggleMute?: () => void;
   readonly onVolumeChange?: (volume: number) => void;
+  readonly onEnableTTS?: () => void;
   readonly autoPlayLecture?: boolean;
   readonly onToggleAutoPlay?: () => void;
   readonly playbackSpeed?: number;
@@ -104,6 +105,7 @@ export function CanvasToolbar({
   ttsVolume = 1,
   onToggleMute,
   onVolumeChange,
+  onEnableTTS,
   autoPlayLecture,
   onToggleAutoPlay,
   playbackSpeed = 1,
@@ -185,6 +187,34 @@ export function CanvasToolbar({
               onMouseEnter={handleVolumeEnter}
               onMouseLeave={handleVolumeLeave}
             >
+              {/* Prominent "Sound On" prompt when TTS is disabled */}
+              {!ttsEnabled && onEnableTTS && (
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={onEnableTTS}
+                        aria-label={t('roundtable.soundOnHint')}
+                        className={cn(
+                          'flex items-center justify-center gap-1',
+                          'h-6 pl-2 pr-2.5 rounded-full text-[11px] font-semibold whitespace-nowrap',
+                          'bg-amber-100 text-amber-700 border border-amber-200',
+                          'dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700/50',
+                          'hover:bg-amber-200 dark:hover:bg-amber-900/60 active:scale-95',
+                          'transition-all shadow-sm mr-1.5',
+                        )}
+                      >
+                        <Volume2 className="w-3.5 h-3.5" />
+                        {t('roundtable.soundOn')}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs max-w-[200px] text-center">
+                      {t('roundtable.soundOnHint')}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+
               <button
                 onClick={onToggleMute}
                 disabled={!ttsEnabled}

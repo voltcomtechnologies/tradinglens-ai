@@ -59,4 +59,7 @@ export interface PlaybackEngineCallbacks {
   getPlaybackSpeed?: () => number;
 
   onComplete?: () => void;
+
+  /** Called when HTMLAudioElement playback is blocked by the browser's autoplay policy. */
+  onAutoplayBlocked?: () => void;
 }
