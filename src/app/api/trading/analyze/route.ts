@@ -14,6 +14,26 @@ function toError(e: unknown): Error {
   return new Error(typeof e === "string" ? e : JSON.stringify(e));
 }
 
+function parseSignalTags(content: string): { signal: "buy" | "sell" | "hold"; confidence: number; cleanContent: string } {
+  const signalMatch = content.match(/<SIGNAL>\s*(BUY|SELL|HOLD)\s*<\/SIGNAL>/i);
+  const confidenceMatch = content.match(/<CONFIDENCE>\s*(\d{1,3})%?\s*<\/CONFIDENCE>/i);
+
+  const signal: "buy" | "sell" | "hold" = signalMatch
+    ? (signalMatch[1].toLowerCase() as "buy" | "sell" | "hold")
+    : "hold";
+
+  let confidence = confidenceMatch ? parseInt(confidenceMatch[1], 10) : 70;
+  if (Number.isNaN(confidence)) confidence = 70;
+  confidence = Math.max(0, Math.min(100, confidence));
+
+  const cleanContent = content
+    .replace(/<SIGNAL>[\s\S]*?<\/SIGNAL>\s*/gi, "")
+    .replace(/<CONFIDENCE>[\s\S]*?<\/CONFIDENCE>\s*/gi, "")
+    .trim();
+
+  return { signal, confidence, cleanContent };
+}
+
 // Fallback mock responses used when the AI API is unavailable
 const MOCK_RESPONSES: Record<string, (pair: string) => string> = {
   analyze: (pair) => `## Technical Analysis: ${pair}
@@ -37,7 +57,10 @@ const MOCK_RESPONSES: Record<string, (pair: string) => string> = {
 - **Take Profit 1:** 1.0850 | **Take Profit 2:** 1.0890
 - **Risk/Reward:** 1:2.3
 
-> ⚠️ This is demo analysis. Configure OpenRouter for live AI analysis.`,
+> ⚠️ This is demo analysis. Configure OpenRouter for live AI analysis.
+
+<SIGNAL>SELL</SIGNAL>
+<CONFIDENCE>72</CONFIDENCE>`,
   sentiment: (pair) => `## Market Sentiment: ${pair}
 
 **Service Status:** AI analysis is temporarily unavailable — showing demo content instead.
@@ -51,7 +74,10 @@ const MOCK_RESPONSES: Record<string, (pair: string) => string> = {
 ### Sentiment Score: **32/100** (Bearish)
 - Technical: 35 | Fundamental: 28 | Positioning: 35
 
-> ⚠️ This is demo analysis. Configure OpenRouter for live AI analysis.`,
+> ⚠️ This is demo analysis. Configure OpenRouter for live AI analysis.
+
+<SIGNAL>HOLD</SIGNAL>
+<CONFIDENCE>65</CONFIDENCE>`,
   levels: (pair) => `## Support & Resistance: ${pair}
 
 **Service Status:** AI analysis is temporarily unavailable — showing demo content instead.
@@ -64,7 +90,10 @@ const MOCK_RESPONSES: Record<string, (pair: string) => string> = {
 | 1.0800 | Support | Strong |
 | 1.0730 | Support | Major |
 
-> ⚠️ This is demo analysis. Configure OpenRouter for live AI analysis.`,
+> ⚠️ This is demo analysis. Configure OpenRouter for live AI analysis.
+
+<SIGNAL>HOLD</SIGNAL>
+<CONFIDENCE>60</CONFIDENCE>`,
   opportunities: (pair) => `## Trade Opportunities
 
 **Service Status:** AI analysis is temporarily unavailable — showing demo content instead.
@@ -79,8 +108,76 @@ const MOCK_RESPONSES: Record<string, (pair: string) => string> = {
 - **Stop:** 1.0765 | **Target:** 1.0875
 - **RR:** 1:2.5 | **Confidence:** 6/10
 
-> ⚠️ This is demo analysis. Configure OpenRouter for live AI analysis.`,
+> ⚠️ This is demo analysis. Configure OpenRouter for live AI analysis.
+
+<SIGNAL>SELL</SIGNAL>
+<CONFIDENCE>68</CONFIDENCE>`,
 };
+
+export async function GET() {
+  let session;
+  try {
+    session = await auth();
+  } catch (authError) {
+    const authErr = toError(authError);
+    console.error("[analyze] Auth error:", authErr.message, authErr.stack);
+    return NextResponse.json(
+      { error: "Unauthorized", detail: authErr.message },
+      { status: 401 }
+    );
+  }
+
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const analyses = await prisma.chartAnalysis.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        imageUrl: true,
+        pair: true,
+        timeframe: true,
+        analysisType: true,
+        aiResponse: true,
+        signals: true,
+        createdAt: true,
+      },
+    });
+
+    const formatted = analyses.map((analysis) => {
+      const signals = (analysis.signals as Record<string, unknown>) || {};
+      const direction =
+        typeof signals.direction === "string" ? signals.direction.toLowerCase() : "hold";
+      const confidence =
+        typeof signals.confidence === "number" ? signals.confidence : 70;
+
+      return {
+        id: analysis.id,
+        imageUrl: analysis.imageUrl,
+        pair: analysis.pair || "EURUSD",
+        timeframe: analysis.timeframe || "1H",
+        analysisType: analysis.analysisType,
+        content: analysis.aiResponse,
+        signal: ["buy", "sell", "hold"].includes(direction) ? direction : "hold",
+        confidence,
+        createdAt: analysis.createdAt.toISOString(),
+      };
+    });
+
+    return NextResponse.json(formatted);
+  } catch (error) {
+    const err = toError(error);
+    console.error("[analyze] Failed to fetch history:", err.message);
+    return NextResponse.json(
+      { error: "Failed to fetch scan history" },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: NextRequest) {
   let session;
@@ -180,11 +277,14 @@ export async function POST(request: NextRequest) {
       providerName = "Demo";
     }
 
-    // Derive signals — conservative defaults; user should read the full analysis
+    // Parse structured signal tags from the LLM response
+    const { signal: parsedSignal, confidence: parsedConfidence, cleanContent } = parseSignalTags(responseContent);
+
+    // Derive signals — use parsed values when available
     const signals = {
       pair: resolvedPair,
-      direction: "NEUTRAL",
-      confidence: aiUsed ? 6 : 4,
+      direction: parsedSignal.toUpperCase(),
+      confidence: parsedConfidence,
       timeframe: resolvedTimeframe,
     };
 
@@ -197,17 +297,21 @@ export async function POST(request: NextRequest) {
         timeframe: resolvedTimeframe,
         analysisType: "technical",
         userPrompt: prompt || "Chart analysis",
-        aiResponse: responseContent,
+        aiResponse: cleanContent,
         signals,
       },
     });
 
     return NextResponse.json({
       id: analysis.id,
-      content: responseContent,
+      content: cleanContent,
       imageUrl,
       aiUsed,
       providerName,
+      pair: resolvedPair,
+      timeframe: resolvedTimeframe,
+      signal: parsedSignal,
+      confidence: parsedConfidence,
     });
   } catch (error) {
     const err = toError(error);

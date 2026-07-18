@@ -18,6 +18,22 @@ export interface AnalysisResult {
   imageUrl: string | null;
   aiUsed?: boolean;
   providerName?: string | null;
+  pair?: string;
+  timeframe?: string;
+  signal?: "buy" | "sell" | "hold";
+  confidence?: number;
+}
+
+export interface ScanHistoryItem {
+  id: string;
+  imageUrl: string | null;
+  pair: string;
+  timeframe: string;
+  analysisType: string;
+  content: string;
+  signal: "buy" | "sell" | "hold";
+  confidence: number;
+  createdAt: string;
 }
 
 export function useChatMessages(sessionId?: string) {
@@ -79,7 +95,21 @@ export function useAnalyzeChart() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["trading-chat"] });
+      queryClient.invalidateQueries({ queryKey: ["scan-history"] });
     },
+  });
+}
+
+export function useScanHistory(enabled = true) {
+  return useQuery<ScanHistoryItem[]>({
+    queryKey: ["scan-history"],
+    queryFn: async () => {
+      const { data } = await axios.get<ScanHistoryItem[]>("/api/trading/analyze");
+      return data;
+    },
+    enabled,
+    staleTime: 1000 * 60 * 5,
+    meta: { showErrorToast: false },
   });
 }
 

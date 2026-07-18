@@ -38,7 +38,14 @@ Important guidelines:
 - Include specific price levels, stop losses, take profits, and risk/reward ratios when giving trade setups.
 - Always add a ⚠️ disclaimer: "This is AI-generated analysis. Always do your own research before trading."
 - Be precise and quantitative rather than vague.
-- When you don't have real-time data, note that and provide analysis based on common patterns.`;
+- When you don't have real-time data, note that and provide analysis based on common patterns.
+- You MUST end your response with the following structured tags on their own lines:
+  <SIGNAL>BUY</SIGNAL> (use exactly BUY, SELL, or HOLD)
+  <CONFIDENCE>85</CONFIDENCE> (a number from 0 to 100)
+- Do NOT wrap these tags in markdown code blocks. Output them directly as plain text.
+- Example end of response:
+  <SIGNAL>BUY</SIGNAL>
+  <CONFIDENCE>85</CONFIDENCE>`;
 
   const typeSpecific: Record<AnalysisType, string> = {
     analyze: `\n\nFocus on full technical analysis: trend identification, key support/resistance levels, RSI implications, MACD signals, moving average crossovers, Bollinger Band positioning, chart patterns, candlestick formations, and a concrete trade setup with entry, stop loss, and take profit levels.`,
