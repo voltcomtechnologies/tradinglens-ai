@@ -15,13 +15,23 @@ import { loginInContext } from "../fixtures/auth";
  *   - `contextOptions.reducedMotion: "reduce"` (set in playwright.config.ts).
  *   - `page.addStyleTag` after navigation snaps all CSS animations and
  *     framer-motion's `initial → animate` transitions to their end state.
- *   - Camera permission denied: the scanner falls into its well-defined
- *     "Camera Access Denied" UI (icons + copy, no `getUserMedia`), which is
- *     far more deterministic than stubbing a synthetic MediaStream.
+ *   - Camera permission NOT explicitly granted. The scanner's
+ *     `navigator.permissions.query` returns `prompt` (Chromium hasn't
+ *     decided yet), so the scanner falls into the default branch and
+ *     mounts `react-webcam`'s empty `<video>` element (no `getUserMedia`
+ *     is acquired) — the viewport renders blank.
  *   - Playwright's native `animations: "disabled"` on the screenshot fast-
  *     forwards finite CSS animations and freezes infinite ones.
  *   - `await networkidle` + an explicit wait for the page-level h1 and the
  *     scanner h3 so the snapshot is committed only after rendering settles.
+ *
+ * Future hardening: register a `context.addInitScript` overriding
+ * `navigator.permissions.query` → `denied` if Chromium's default
+ * Permissions API state ever drifts and we want to deterministically
+ * land the scanner in the "Camera Access Denied" UI branch instead of
+ * the empty-`<video>` branch. Note: would visibly change the snapshot
+ * (icons + copy vs. blank viewport), so PNG baselines would need
+ * regeneration.
  *
  * Auth flow: we use `loginInContext(context, baseURL)` in `beforeEach` so
  * the credentials login happens on the SAME BrowserContext that the spec
