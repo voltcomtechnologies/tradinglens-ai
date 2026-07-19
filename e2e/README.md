@@ -69,36 +69,36 @@ pnpm test:e2e:update
 # 5. Commit the changed PNGs as part of your feature commit
 ```
 
-## Cross-platform gotcha (read before running on CI)
+## Cross-platform policy: Windows-only baselines
 
-The committed baselines are suffixed with the host platform — on Windows
-they look like `*-win32.png`, on macOS `*-darwin.png`, on Linux
-`*-linux.png`. That means:
+Playwright suffixes snapshot filenames with the host platform
+(`*-win32.png` / `*-darwin.png` / `*-linux.png`) and the current API has
+**no platform-agnostic option** (verified against `@playwright/test@1.61.1`
+docs) — you either commit per-OS baselines, or constrain CI to one OS,
+or run via Docker. The project's decision is the **single-OS** option:
+Windows only.
 
-- The currently-committed baselines are `-win32.png` from the original
-  capture on Windows.
-- A macOS or Linux CI runner will look for `*-darwin.png` /
-  `*-linux.png` and fail with `Snapshot … not found`.
+Concretely:
 
-**Recommended: Option 2** — regenerate per OS and commit each set. It
-works for any CI host, avoids per-PR crossed-finger breakage, and the disk
-cost is trivially small (a few hundred KB for the six PNGs). Pick another
-only if you have a hard constraint.
+- **CI runs only on Windows.** Any CI matrix that includes macOS/Linux
+  runners is a misconfiguration; fix at the workflow level.
+- **The committed baselines are `-win32.png`** from the original capture
+  on Windows. They are the only baselines the project tracks.
+- **macOS / Linux contributors running the suite locally** can regenerate
+  a private local copy with `pnpm test:e2e:update` (which will produce
+  `*-darwin.png` / `*-linux.png` next to the committed `-win32.png`).
+  **Do not commit your `-darwin` / `-linux` baselines** — reject them
+  in your PR. Windows-only is the project policy.
+- **Why we chose single-OS**: the project ships on Windows, and the
+  regression surface this suite guards (header/scanner balance at 375px)
+  doesn't vary meaningfully across rendering engines at the 0.5%
+  pixel-diff threshold — cross-engine variance here is noise, not
+  signal. Windows-only keeps the suite deterministic, single-set, and
+  trivially reviewable in PR diffs.
 
-Three valid escapes:
-
-1. **Commit to a single CI OS.** Run e2e jobs only on Windows (or only
-   on Linux). Document the choice above.
-2. **Regenerate on each CI OS once and commit each set.** Three sets of
-   two PNGs in the snapshot directory; CI picks the right one. Disk
-   cost is trivial (~700 KB × 3 = 2 MB).
-3. **Use Playwright 1.50+'s platform-agnostic snapshot option** if your
-   installed version supports `toHaveScreenshot({ …, omitPlatform:
-   true })`. Verify the `platformagnostic` filename suffix behaviour on
-   your installed version before relying on it.
-
-Until you pick one of the above, expect a non-Windows CI run to fail
-on the missing-baseline snapshot lookup.
+A future flip to multi-OS is a doc change away — at that point,
+regenerate locally on each OS, commit each PNG set alongside the
+matrix change, and update this paragraph.
 
 ## Troubleshooting
 
@@ -109,7 +109,8 @@ on the missing-baseline snapshot lookup.
 | `Error: CSRF fetch failed: 500 … UntrustedHost`                        | `AUTH_TRUST_HOST` missing (shouldn't happen — set in config).      | Verify you're running against a fresh `pnpm install` output.   |
 | `browserType.launch: Executable doesn't exist` … `webkit-…`            | `devices["iPhone SE"]`'s `defaultBrowserType: "webkit"` hint.      | The config explicitly sets `browserName: "chromium"` — verify `playwright.config.ts` is up to date. |
 | `Timed out waiting for http://localhost:3030` (or `Error: EADDRINUSE :::3030` in the dev log) | Stale `next start` from an aborted prior run (or a previous contributor's process) holding port 3030. | Find the PID holding port 3030 — `netstat -ano \| findstr ":3030 "` (Windows) or `lsof -i :3030` / `fuser 3030/tcp` / `ss -tlnp` (unix-likes; pick whatever is installed). Then kill it and re-run `pnpm test:e2e`. |
-| `Snapshot … not found` on macOS/Linux CI                               | Cross-platform baseline gotcha (see above).                        | Pick one of the three escapes above.                           |
+| `Snapshot … not found` when running `pnpm test:e2e` locally on macOS / Linux | No baseline exists yet for the local platform's filename suffix (`*-darwin.png` / `*-linux.png`). | Run `pnpm test:e2e:update` once to create a local baseline, then **do not commit** the new `*-darwin.png` / `*-linux.png` PNGs — Windows-only is the project policy (see above). |
+| Inherited / configured a CI matrix with macOS / Linux runners         | Project snapshot policy is Windows-only — those runners will fail with `Snapshot … not found`. | Either remove macOS/Linux from the matrix, or follow the future-proofing path in the cross-platform section above to commit per-OS PNGs. |
 | `expect(page).toHaveScreenshot: maxDiffPixelRatio exceeded`            | Real visual regression OR sub-pixel render drift.                 | Inspect the diff PNGs in `e2e/test-results/`; if it's a real bug, fix it; if it's intentional, run `pnpm test:e2e:update`. |
 
 ## How it works
