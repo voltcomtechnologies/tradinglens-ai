@@ -66,3 +66,13 @@ openmaic/**/.cache/
 # Build artifacts produced by openmaic's postinstall step.
 openmaic/packages/*/lib/
 openmaic/packages/*/dist/
+
+# Playwright (e2e visual snapshots)
+/e2e/test-results/
+/playwright-report/
+/playwright/.cache/
+# Cached login storage state used by e2e/tests/trading-lens-narrow.spec.ts.
+/.auth/
+# NOTE: the snapshot baselines themselves live next to the spec file at
+#   e2e/tests/trading-lens-narrow.spec.ts-snapshots/
+# and ARE committed on purpose so future diffs are detected in PR review.
