@@ -82,8 +82,8 @@ they look like `*-win32.png`, on macOS `*-darwin.png`, on Linux
 
 **Recommended: Option 2** — regenerate per OS and commit each set. It
 works for any CI host, avoids per-PR crossed-finger breakage, and the disk
-cost is trivial (~700 KB × 3 = 2 MB). Pick another only if you have a
-hard constraint.
+cost is trivially small (a few hundred KB for the six PNGs). Pick another
+only if you have a hard constraint.
 
 Three valid escapes:
 
@@ -108,7 +108,7 @@ on the missing-baseline snapshot lookup.
 | `Error: Credentials login failed: 401`                                | DB not seeded.                                                     | `pnpm seed`.                                                   |
 | `Error: CSRF fetch failed: 500 … UntrustedHost`                        | `AUTH_TRUST_HOST` missing (shouldn't happen — set in config).      | Verify you're running against a fresh `pnpm install` output.   |
 | `browserType.launch: Executable doesn't exist` … `webkit-…`            | `devices["iPhone SE"]`'s `defaultBrowserType: "webkit"` hint.      | The config explicitly sets `browserName: "chromium"` — verify `playwright.config.ts` is up to date. |
-| `Timed out waiting for http://localhost:3030` (or `Error: EADDRINUSE :::3030` in the dev log) | Stale `next start` from an aborted prior run (or a previous contributor's process) holding port 3030. | Find the orphan: `netstat -ano \| findstr ":3030 "` (Windows) or `lsof -i :3030` (macOS/Linux). Kill the PID: `MSYS_NO_PATHCONV=1 taskkill /F /PID <pid>` (Windows) or `kill -9 <pid>` (unix-likes). Then re-run `pnpm test:e2e`. |
+| `Timed out waiting for http://localhost:3030` (or `Error: EADDRINUSE :::3030` in the dev log) | Stale `next start` from an aborted prior run (or a previous contributor's process) holding port 3030. | Find the PID holding port 3030 — `netstat -ano \| findstr ":3030 "` (Windows) or `lsof -i :3030` / `fuser 3030/tcp` / `ss -tlnp` (unix-likes; pick whatever is installed). Then kill it and re-run `pnpm test:e2e`. |
 | `Snapshot … not found` on macOS/Linux CI                               | Cross-platform baseline gotcha (see above).                        | Pick one of the three escapes above.                           |
 | `expect(page).toHaveScreenshot: maxDiffPixelRatio exceeded`            | Real visual regression OR sub-pixel render drift.                 | Inspect the diff PNGs in `e2e/test-results/`; if it's a real bug, fix it; if it's intentional, run `pnpm test:e2e:update`. |
 
@@ -124,13 +124,10 @@ following for each route:
    so no race between `beforeAll` writing it and Playwright reading it
    via `test.use({ storageState })`.
 2. Navigates at 375×667 viewport with `reducedMotion: "reduce"` and
-   camera permission **not** granted. The scanner's `useEffect` queries
-   `navigator.permissions.query`, which returns `prompt` (Chromium hasn't
-   decided yet), falls into the `else` branch, and mounts `<Webcam>` from
-   `react-webcam` — which renders an empty `<video>` element (no
-   `getUserMedia` is acquired). Visually indistinguishable from a denied
-   state, but the actual code path is "empty video stream", not "Camera
-   Access Denied UI".
+   camera permission **not** granted. The scanner's permission-API check
+   returns `prompt`, falls into the default branch, and mounts
+   `react-webcam`'s empty `<video>` element (no `getUserMedia` is
+   acquired) — the viewport renders blank.
 3. Waits for the page `<h1>` and the scanner `<h3>` to be visible,
    then for `networkidle`, then injects a `* { animation/transition:
    none !important }` stylesheet to snap framer-motion's `initial →
