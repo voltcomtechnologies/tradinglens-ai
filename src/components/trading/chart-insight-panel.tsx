@@ -74,6 +74,10 @@ export function ChartInsightPanel({
     granularity,
     enabled,
     speak,
+    // Pass stopSpeak so the hook can cancel an in-flight native utterance
+    // when a fresh capture supersedes an older one (sub-second symbol
+    // switch halts the OLD sentence mid-speak).
+    stopSpeak: stop,
     onInsight: handleInsight,
   });
 
@@ -83,6 +87,10 @@ export function ChartInsightPanel({
   const toggle = () => {
     if (!supported) return;
     if (enabled) {
+      // Setting enabled=false also fires the hook's `enabled`-effect,
+      // which calls cancelInFlight() (stopping native TTS + dropping
+      // queued sentences). We belt-and-braces call stop() so the
+      // browser TTS is killed synchronously before the render commits.
       stop();
       setEnabled(false);
     } else {

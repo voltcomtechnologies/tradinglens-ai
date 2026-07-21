@@ -129,6 +129,16 @@ test.describe("Trading Lens – narrow viewport balance", () => {
         content: STYLE_RESET_CSS,
       });
 
+      // Wait for the scan-history fetch to settle so the
+      // `useScanHistory` skeleton (3 cards at `.h-64.animate-pulse`
+      // inside a `.mt-12` wrapper — 340px tall — see
+      // trading-lens-core.tsx) is unmounted before the screenshot.
+      // Defensive on the narrow viewport: it currently passes by accident
+      // because the scanner card pushes the skeleton off the captured
+      // frame, but a future regression on the scanner chrome could
+      // surface the same 340px drift the live-chart spec just hit.
+      await expect(page.locator(".h-64.animate-pulse")).toHaveCount(0);
+
       await expect(page).toHaveScreenshot(
         `trading-lens-narrow-${route.name}.png`,
         {

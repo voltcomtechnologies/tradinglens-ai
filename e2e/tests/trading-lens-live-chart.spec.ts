@@ -173,6 +173,17 @@ test.describe("Trading Lens – live chart desktop snapshot", () => {
         content: STYLE_RESET_CSS,
       });
 
+      // 4. Wait for the scan-history fetch to settle. `useScanHistory`
+      //    in trading-lens-core.tsx renders a skeleton (3 cards at
+      //    `h-64 animate-pulse` inside a `mt-12` block — exactly 340px
+      //    tall) while the network request is in flight. Without this
+      //    gate, the snapshot races the request: cold-cache first-run
+      //    (UPDATE) catches the skeleton → 2737px baseline; hot-cache
+      //    second-run (VERIFY) catches the post-load state → 2397px.
+      //    Pinning the locator to count=0 makes both phases paint the
+      //    same frame deterministically.
+      await expect(page.locator(".h-64.animate-pulse")).toHaveCount(0);
+
       await expect(page).toHaveScreenshot(
         `trading-lens-live-chart-${route.name}.png`,
         {

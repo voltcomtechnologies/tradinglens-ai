@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   chatCompletion,
+  chatCompletionStream,
   buildTradingSystemPrompt,
   buildUserMessage,
   classifyAnalysisType,
@@ -283,6 +284,15 @@ export async function POST(request: NextRequest) {
     const resolvedPair = pair || "EURUSD";
     const resolvedTimeframe = timeframe || "1H";
     const analysisType = classifyAnalysisType(prompt || "analyze");
+    const isNarrator = type === "narrator";
+
+    // The narrator flow supports a streaming path: when the client opts
+    // in via `Accept: text/event-stream`, we forward upstream OpenAI
+    // SSE chunks as the response body so the chart-narrator can begin
+    // TTS on the first sentence rather than waiting for a full reply.
+    // The non-narrator camera-scanner path stays as a single JSON reply.
+    const acceptHeader = request.headers.get("accept") ?? "";
+    const wantsStream = isNarrator && acceptHeader.includes("text/event-stream");
 
     // Fetch user's preferred LLM provider (gracefully handle missing column/migration)
     let llmProvider: "openrouter" | "groq" | "auto" = "auto";
@@ -307,36 +317,93 @@ export async function POST(request: NextRequest) {
     let aiUsed = false;
     let providerName: string | null = null;
 
-    // `type === "narrator"` switches the system + user prompts to a
-    // speech-friendly tone and bypasses the scanner's structured
-    // `<SIGNAL>/<CONFIDENCE>` tag expectation. It is set by the
-    // `useChartNarrator` hook in `src/lib/hooks/use-chart-narrator.ts`.
-    const isNarrator = type === "narrator";
+    // Build messages up front so both the streaming and the static paths
+    // share an identical prompt contract.
+    let systemPrompt: string;
+    let userPrompt: string;
+    let userMessageContent: ReturnType<typeof buildUserMessage>;
+
+    if (isNarrator) {
+      systemPrompt = NARRATOR_SYSTEM_PROMPT;
+      userPrompt = prompt || buildNarratorUserMessage(resolvedPair, resolvedTimeframe);
+      userMessageContent = buildUserMessage(userPrompt, imageUrl);
+    } else {
+      systemPrompt = buildTradingSystemPrompt(analysisType, resolvedPair, resolvedTimeframe);
+      userPrompt = prompt || `Provide a ${analysisType} analysis for ${resolvedPair} on the ${resolvedTimeframe} timeframe`;
+      userMessageContent = buildUserMessage(userPrompt, imageUrl);
+    }
+
+    const llmMessages = [
+      { role: "system" as const, content: systemPrompt },
+      userMessageContent,
+    ];
+
+    // ── Streaming path (narrator + Accept: text/event-stream) ──────
+    if (wantsStream) {
+      try {
+
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream<Uint8Array>({
+          async start(controller) {
+            try {
+        for await (const delta of chatCompletionStream(llmProvider, llmMessages, {
+          temperature: 0.6,
+          signal: request.signal,
+        })) {
+                if (request.signal.aborted) {
+                  controller.close();
+                  return;
+                }
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({ delta })}\n\n`,
+                  ),
+                );
+              }
+              controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+              controller.close();
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : String(err);
+              // Surface the error as a final event so the client's parser
+              // can transition to its error state cleanly.
+              try {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({ error: msg })}\n\n`,
+                  ),
+                );
+              } catch {
+                // controller already closed
+              }
+              controller.close();
+            }
+          },
+        });
+
+        return new Response(stream, {
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache, no-transform",
+            Connection: "keep-alive",
+            "X-Accel-Buffering": "no",
+          },
+        });
+      } catch (aiError) {
+        // Streaming setup failed (e.g. no provider configured). Fall
+        // through to the non-streaming narrative path so the client at
+        // least gets a single JSON reply with a friendly fallback.
+        console.error("[analyze] Narrator stream setup failed, falling back to static:", aiError);
+      }
+    }
 
     try {
-      const systemPrompt = isNarrator
-        ? NARRATOR_SYSTEM_PROMPT
-        : buildTradingSystemPrompt(
-            analysisType,
-            resolvedPair,
-            resolvedTimeframe
-          );
-
-      const userMessage = buildUserMessage(
-        isNarrator
-          ? prompt || buildNarratorUserMessage(resolvedPair, resolvedTimeframe)
-          : prompt ||
-            `Provide a ${analysisType} analysis for ${resolvedPair} on the ${resolvedTimeframe} timeframe`,
-        imageUrl
-      );
-
+      // The canonical prompt pair was built above (`llmMessages`) and is
+      // reused by both the SSE streaming path and this static fallback —
+      // keeping both paths on the IDENTICAL prompt contract avoids drift.
       const { content, providerName: actualProviderName } = await chatCompletion(
         llmProvider,
-        [
-          { role: "system", content: systemPrompt },
-          userMessage,
-        ],
-        { temperature: isNarrator ? 0.6 : 0.7 }
+        llmMessages,
+        { temperature: isNarrator ? 0.6 : 0.7 },
       );
       responseContent = content;
       aiUsed = true;
