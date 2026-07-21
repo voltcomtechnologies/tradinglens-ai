@@ -103,5 +103,18 @@ export default defineConfig({
         browserName: "chromium",
       },
     },
+    {
+      name: "desktop-1280",
+      // Desktop snapshot project for the /lens/trading live-chart surface.
+      // The `deviceScaleFactor: 1` is non-negotiable: leaving Playwright's
+      // default (varies by host) would shift the chart canvas pixel-layer
+      // by a hair every machine, blowing the maxDiffPixelRatio threshold.
+      // (See e2e/README.md — "Cross-platform policy: Windows-only baselines".)
+      use: {
+        viewport: { width: 1280, height: 720 },
+        deviceScaleFactor: 1,
+        browserName: "chromium",
+      },
+    },
   ],
 });

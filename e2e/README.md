@@ -113,10 +113,41 @@ matrix change, and update this paragraph.
 | Inherited / configured a CI matrix with macOS / Linux runners         | Project snapshot policy is Windows-only — those runners will fail with `Snapshot … not found`. | Either remove macOS/Linux from the matrix, or follow the future-proofing path in the cross-platform section above to commit per-OS PNGs. |
 | `expect(page).toHaveScreenshot: maxDiffPixelRatio exceeded`            | Real visual regression OR sub-pixel render drift.                 | Inspect the diff PNGs in `e2e/test-results/`; if it's a real bug, fix it; if it's intentional, run `pnpm test:e2e:update`. |
 
+## Visual test inventory
+
+| Spec file                                              | Project (`playwright.config.ts`) | Viewport       | Surface covered                                                                                          |
+| ------------------------------------------------------ | -------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------- |
+| `e2e/tests/trading-lens-narrow.spec.ts`                | `mobile-375`                     | 375×667        | `/lens/trading` and `/dashboard/trading` — header/scanner balance. Camera permission is NOT granted.    |
+| `e2e/tests/trading-lens-live-chart.spec.ts`            | `desktop-1280`                   | 1280×720       | `/lens/trading` — `LiveChart` canvas (lightweight-charts v5 + chrome + status badge). Mock feed. WebSocket aborted. |
+
+The narrow spec covers the AI-camera-scan path; the live-chart spec covers
+the live-observation path. They are siblings on the route, not
+replacements — neither test removes or shadows the other.
+
+Adding a new visual spec:
+
+1. Pick the viewport / target surface in `playwright.config.ts`'s
+   `projects` array. Reuse `mobile-375` or `desktop-1280` if it fits;
+   add a new project only when you need a different viewport AND you can
+   justify the additional CI minutes.
+2. Compose a seed fixture under `e2e/fixtures/<domain>/`. Snapshots are
+   stable only when the underlying data is reproducible — never feed the
+   spec a `Date.now()`-derived row.
+3. Write the spec. Mirror the `loginInContext` pattern from existing
+   specs. Route-intercept any data endpoint feeding the chart so test
+   runs don't drift on today's date or Alpha Vantage rate-limit
+   throttling. `waitForFunction` for canvas dimensions > 0 before
+   screenshotting if the spec targets canvas paint.
+4. Generate the baseline once with `pnpm test:e2e:update`. Commit the
+   resulting PNGs AND a new row to the inventory table above.
+
 ## How it works
 
-The single spec, `e2e/tests/trading-lens-narrow.spec.ts`, does the
-following for each route:
+The current specs share the same `beforeEach` recipe:
+`loginInContext` from the seeded demo user, viewport reset, abort the
+Socket.IO server (`ws://*:3001/*`) so the chart polls instead of
+folding live ticks, then optionally route-intercept `/api/market/data`
+with a fixed seed. Each spec then:
 
 1. Logs in via the seeded demo user using
    [`loginInContext`](fixtures/auth.ts) — a 3-round-trip Auth.js
@@ -124,15 +155,16 @@ following for each route:
    the same `BrowserContext` the test runs in. No `storageState` file,
    so no race between `beforeAll` writing it and Playwright reading it
    via `test.use({ storageState })`.
-2. Navigates at 375×667 viewport with `reducedMotion: "reduce"` and
-   camera permission **not** granted. The scanner's permission-API check
-   returns `prompt`, falls into the default branch, and mounts
-   `react-webcam`'s empty `<video>` element (no `getUserMedia` is
-   acquired) — the viewport renders blank.
-3. Waits for the page `<h1>` and the scanner `<h3>` to be visible,
-   then for `networkidle`, then injects a `* { animation/transition:
-   none !important }` stylesheet to snap framer-motion's `initial →
-   animate` transitions to end state.
+2. Navigates at the project-defined viewport with `reducedMotion:
+   "reduce"` and camera permission **not** granted (narrow spec only —
+   the live-chart spec doesn't touch the camera). The scanner's
+   permission-API check returns `prompt`, falls into the default branch,
+   and mounts `react-webcam`'s empty `<video>` element (no
+   `getUserMedia` is acquired) — the viewport renders blank.
+3. Waits for the page-level headed landmarks (heading visible,
+   `networkidle`, optional canvas paint check), then injects a `*
+   { animation/transition: none !important }` stylesheet to snap
+   framer-motion's `initial → animate` transitions to end state.
 4. Calls `expect(page).toHaveScreenshot(..., { animations: 'disabled',
    fullPage: true, maxDiffPixelRatio: 0.005 })`. The 0.5% tolerance is
    calibrated for cross-machine font hinting differences; tighten if you

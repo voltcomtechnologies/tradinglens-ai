@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
@@ -11,6 +12,20 @@ import { useAnalyzeChart, useScanHistory, useDeleteScan } from "@/lib/hooks/use-
 import { useVoice } from "@/lib/hooks/use-voice";
 import { dataUrlToFile } from "@/lib/utils";
 import type { ScanHistoryItem } from "@/lib/hooks/use-trading";
+
+// `lightweight-charts` reads `document` and creates a canvas at import time,
+// so the LiveChart module has to be loaded off the SSR path. The dynamic
+// wrapper does that AND surfaces a non-jarring placeholder so the layout
+// doesn't shift visibly when the JS chunk arrives.
+const LiveChart = dynamic(() => import("@/components/trading/live-chart"), {
+  ssr: false,
+  loading: () => (
+    <div
+      aria-label="Loading live chart"
+      className="h-[360px] sm:h-[420px] w-full rounded-3xl border border-primary/20 bg-card/40 backdrop-blur-xl animate-pulse"
+    />
+  ),
+});
 export function TradingLensCore() {
   const { data: session } = useSession();
   const [capturedImage, setCapturedImage] = useState<string | File | null>(null);
@@ -108,6 +123,11 @@ export function TradingLensCore() {
         isAnalyzing={isAnalyzing}
         className="mb-8"
       />
+
+      {/* Live candle chart — observation path, sibling to the AI scan above. */}
+      <div className="mb-8">
+        <LiveChart initialSymbol="EURUSD" initialGranularity="1d" />
+      </div>
 
       {/* Result */}
       <AnimatePresence mode="wait">
