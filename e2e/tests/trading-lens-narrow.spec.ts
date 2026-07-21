@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { loginInContext } from "../fixtures/auth";
+import { STYLE_RESET_CSS } from "../fixtures/styles";
 
 /**
  * Visual snapshot guard for the Trading Lens narrow-viewport header/scanner
@@ -58,8 +59,38 @@ test.describe("Trading Lens – narrow viewport balance", () => {
   // larger — at that point a properly-synchronized-storageState helper would
   // be the right move (the prior attempt at that pattern raced on the file-
   // write timing and was removed).
-  test.beforeEach(async ({ context, baseURL }) => {
+  test.beforeEach(async ({ context, baseURL, page }) => {
     await loginInContext(context, baseURL!);
+
+    // Short-circuit the bottom-rail Forex news ticker. The route fetches
+    // daily-fx headlines server-side with a 5-min in-process cache; without
+    // this intercept the spec races against hour-by-hour RSS content drift
+    // and `waitForLoadState("networkidle")` (below) never settles because the
+    // live RSS fetch keeps the network non-idle. Deterministic mock keeps
+    // the full-page screenshot stable across runs.
+    await page.route("**/api/forex-news**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          items: [
+            {
+              title: "EUR/USD steady ahead of ECB minutes",
+              link: "https://example.com/eur-usd-ecb",
+              pubDate: "2024-09-30T16:00:00.000Z",
+            },
+            {
+              title: "Dollar index slips as yields ease",
+              link: "https://example.com/dxy-yields",
+              pubDate: "2024-09-30T15:30:00.000Z",
+            },
+          ],
+          pair: null,
+          source: "test-fixture",
+          cachedAt: "2024-09-30T16:00:00.000Z",
+        }),
+      }),
+    );
   });
 
   for (const route of ROUTES) {
@@ -88,21 +119,14 @@ test.describe("Trading Lens – narrow viewport balance", () => {
       await page.waitForLoadState("networkidle");
 
       // Hard-snap any in-flight CSS animation / framer-motion transition
-      // BEFORE the screenshot. Playwright's `animations: "disabled"` will
-      // fast-forward finite ones and freeze infinite ones, but some framer-
-      // motion `style` transforms ignore that — so we explicitly force them
-      // to end state via CSS overrides.
+      // BEFORE the screenshot. See `e2e/fixtures/styles.ts` for the rationale
+      // behind the two-layer reset — the wildcard rule handles CSS animations
+      // and transitions, while the `[data-projection-id]` rule pins
+      // framer-motion's layout-sprung transforms so a route's active-link
+      // indicator doesn't leave a residual offset between UPDATE and VERIFY
+      // phases of the baseline bake.
       await page.addStyleTag({
-        content: `
-          *, *::before, *::after {
-            animation-duration: 0s !important;
-            animation-delay: 0s !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0s !important;
-            transition-delay: 0s !important;
-            caret-color: transparent !important;
-          }
-        `,
+        content: STYLE_RESET_CSS,
       });
 
       await expect(page).toHaveScreenshot(

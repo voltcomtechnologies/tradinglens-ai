@@ -20,9 +20,22 @@
  * across machines. The `e2e/tests/trading-lens-live-chart.spec.ts` spec
  * intercepts `/api/market/data` with seeded fixtures and aborts the WebSocket
  * so the chart paints a single, reproducible frame.
+ *
+ * Narrator integration: via forwardRef, the parent can imperatively pull
+ *   a JPEG snapshot of the chart (`takeScreenshot().toBlob('image/jpeg', 0.7)`)
+ *   and probe `hasData()` to know whether candles have actually rendered.
+ *   Two callback props (`onSymbolChange`, `onStatusChange`) bubble state up
+ *   so the parent's debounced narrator can re-fire.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Maximize,
@@ -45,10 +58,28 @@ import {
 } from "lightweight-charts";
 
 import { cn } from "@/lib/utils";
-import { MAJOR_PAIRS, TIMEFRAMES } from "@/types";
+import { MAJOR_PAIRS } from "@/types";
 import { useCandleFeed } from "@/lib/hooks/use-candle-feed";
 import { useSocketPrices } from "@/lib/hooks/use-socket";
 import type { Granularity } from "@/app/api/market/data/route";
+
+/**
+ * Imperative API for the Grok narrator hook. Surfaced via `forwardRef`
+ * so the parent in `trading-lens-core.tsx` can capture the canvas without
+ * lifting the chart instance itself into a global.
+ */
+export interface LiveChartHandle {
+  /** Returns a JPEG-encoded Blob of the current chart frame, or null if
+   *  the chart hasn't mounted yet. Quality is fixed at 0.7 to stay
+   *  comfortably under the 4MB Next.js body-parser default. */
+  captureCanvas: () => Promise<Blob | null>;
+  /** True iff the candle series has at least one bar rendered. The
+   *  narrator hook skips captures while this is false so we never ship
+   *  an empty JPEG to Grok. */
+  hasData: () => boolean;
+}
+
+export type LiveChartFeedStatus = "loading" | "live" | "polling" | "error";
 
 const PAIR_OPTIONS = MAJOR_PAIRS;
 const TIMEFRAME_OPTIONS: { value: Exclude<Granularity, "1h"> | Granularity; label: string }[] =
@@ -74,13 +105,23 @@ interface LiveChartProps {
   initialSymbol?: string;
   initialGranularity?: Granularity;
   className?: string;
+  /** Fires whenever the user picks a different pair or timeframe. Used by
+   *  the parent narrator hook to debounce re-narration on focus change. */
+  onSymbolChange?: (symbol: string, granularity: Granularity) => void;
+  /** Fires whenever the underlying feed status changes. */
+  onStatusChange?: (status: LiveChartFeedStatus) => void;
 }
 
-export default function LiveChart({
-  initialSymbol = "EURUSD",
-  initialGranularity = "1d",
-  className,
-}: LiveChartProps) {
+const LiveChart = forwardRef<LiveChartHandle, LiveChartProps>(function LiveChart(
+  {
+    initialSymbol = "EURUSD",
+    initialGranularity = "1d",
+    className,
+    onSymbolChange,
+    onStatusChange,
+  },
+  ref,
+) {
   const [symbol, setSymbol] = useState(initialSymbol);
   const [granularity, setGranularity] = useState<Granularity>(initialGranularity);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -168,6 +209,47 @@ export default function LiveChart({
     chartRef.current.timeScale().fitContent();
   }, [symbol, granularity]);
 
+  // ── Imperative handle for the Grok narrator hook ─────────────────
+  // Empty deps — `captureCanvas` and `hasData` only touch refs that are
+  // stable for the lifetime of the mount. Recreating the handle on every
+  // render would cause the parent's `useEffect([chartRef])` to thrash.
+  useImperativeHandle(
+    ref,
+    () => ({
+      captureCanvas: () =>
+        new Promise((resolve) => {
+          const chart = chartRef.current;
+          if (!chart) return resolve(null);
+          try {
+            const canvas = chart.takeScreenshot();
+            canvas.toBlob(
+              (blob) => resolve(blob),
+              "image/jpeg",
+              0.7,
+            );
+          } catch {
+            // takeScreenshot can throw on a detached/zero-size canvas
+            // (e.g. during the framer-motion layout animation). Resolve
+            // null so the narrator hook can skip silently.
+            resolve(null);
+          }
+        }),
+      hasData: () => {
+        try {
+          return (seriesRef.current?.data()?.length ?? 0) > 0;
+        } catch {
+          return false;
+        }
+      },
+    }),
+    [],
+  );
+
+  // ── State-change callbacks for the parent ───────────────────────
+  useEffect(() => {
+    onSymbolChange?.(symbol, granularity);
+  }, [symbol, granularity, onSymbolChange]);
+
   // ── Live data plumbing ───────────────────────────────────────────
   const { status, lastError } = useCandleFeed({
     symbol,
@@ -189,6 +271,11 @@ export default function LiveChart({
     },
   });
 
+  // Bubble status up so the parent can show "waiting for data…" affordances.
+  useEffect(() => {
+    onStatusChange?.(status);
+  }, [status, onStatusChange]);
+
   const { prices } = useSocketPrices();
   const livePrice = prices[symbol];
 
@@ -197,11 +284,6 @@ export default function LiveChart({
     setIsExpanded((prev) => !prev);
   }, []);
   const handleRefresh = useCallback(() => {
-    // Force a re-history fetch by briefly bumping then restoring the symbol —
-    // the hook is keyed off `symbol`/`granularity`, so a no-op toggle forces
-    // it to re-enter the effect and re-fetch. (Future: expose an explicit
-    // `refresh()` method via a `useImperativeHandle` if a non-hacky path is
-    // preferred - flagged as a small refactor.)
     setRefreshKey((k) => k + 1);
   }, []);
 
@@ -394,4 +476,6 @@ export default function LiveChart({
       </div>
     </motion.div>
   );
-}
+});
+
+export default LiveChart;

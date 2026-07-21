@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 
 import { loginInContext } from "../fixtures/auth";
 import { SEEDED_MARKET_DATA_RESPONSE } from "../fixtures/market/seed";
+import { STYLE_RESET_CSS } from "../fixtures/styles";
 
 /**
  * Visual snapshot guard for the /lens/trading LIVE CHART surface at desktop
@@ -59,7 +60,24 @@ const ROUTES = [
 ] as const;
 
 test.describe("Trading Lens – live chart desktop snapshot", () => {
-  test.beforeEach(async ({ context, page, baseURL }) => {
+  // This spec guards the LIVE CHART surface at 1280×720. Running it
+  // under the `mobile-375` project produces a PNG that overwrites the
+  // desktop baseline under the same snapshot-name prefix — Playwright
+  // strips the project name from the filename when both projects share
+  // the same spec, and that bricks the next run. Skip on mobile; the
+  // `trading-lens-narrow.spec.ts` spec already covers the narrow path.
+  // We do the conditional-skip INSIDE beforeEach with `testInfo` fully
+  // typed so the strict TypeScript setting (`noImplicitAny`,
+  // `strictFunctionTypes`) is happy without `any` magic.
+  test.beforeEach(async ({ context, page, baseURL }, testInfo) => {
+    if (testInfo.project.name === "mobile-375") {
+      test.skip(
+        true,
+        "Live-chart surface is desktop-only; narrow viewport coverage lives in trading-lens-narrow.spec.ts.",
+      );
+      return; // unreachable in practice; the skip above marks the test as skipped.
+    }
+
     await loginInContext(context, baseURL!);
 
     // Belt-and-braces: re-assert the viewport in case a future default
@@ -79,6 +97,41 @@ test.describe("Trading Lens – live chart desktop snapshot", () => {
         body: JSON.stringify(SEEDED_MARKET_DATA_RESPONSE),
       }),
     );
+
+    // Short-circuit the bottom-rail Forex news ticker so its marquee
+    // content is deterministic. The route fetches daily-fx headlines
+    // server-side with a 5-min in-process cache; without this intercept
+    // the spec races against hour-by-hour RSS content drift and
+    // toHaveScreenshot retries until its default 5s timeout fires.
+    await page.route("**/api/forex-news**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          items: [
+            {
+              title: "EUR/USD steady ahead of ECB minutes",
+              link: "https://example.com/eur-usd-ecb",
+              pubDate: "2024-09-30T16:00:00.000Z",
+            },
+            {
+              title: "Dollar index slips as yields ease",
+              link: "https://example.com/dxy-yields",
+              pubDate: "2024-09-30T15:30:00.000Z",
+            },
+          ],
+          pair: "EURUSD",
+          source: "test-fixture",
+          cachedAt: "2024-09-30T16:00:00.000Z",
+        }),
+      }),
+    );
+
+    // NOTE: we intentionally do NOT intercept /api/trading/analyze.
+    // The Grok narrator hook auto-fires only when `enabled === true`,
+    // which defaults to false in `ChartInsightPanel`. Since the spec
+    // never clicks the "Enable" toggle, the debounced 1.2s capture
+    // never runs against the route, so there's nothing to mock.
   });
 
   for (const route of ROUTES) {
@@ -115,18 +168,9 @@ test.describe("Trading Lens – live chart desktop snapshot", () => {
       );
 
       // 3. Hard-snap animations + transitions (mirrors the narrow spec's
-      //    recipe — comment there has the rationale).
+      //    recipe — see `e2e/fixtures/styles.ts` for the rationale).
       await page.addStyleTag({
-        content: `
-          *, *::before, *::after {
-            animation-duration: 0s !important;
-            animation-delay: 0s !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0s !important;
-            transition-delay: 0s !important;
-            caret-color: transparent !important;
-          }
-        `,
+        content: STYLE_RESET_CSS,
       });
 
       await expect(page).toHaveScreenshot(

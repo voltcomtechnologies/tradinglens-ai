@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react";
@@ -11,7 +11,11 @@ import { ScanHistoryGallery } from "@/components/trading/scan-history";
 import { useAnalyzeChart, useScanHistory, useDeleteScan } from "@/lib/hooks/use-trading";
 import { useVoice } from "@/lib/hooks/use-voice";
 import { dataUrlToFile } from "@/lib/utils";
+import { ChartInsightPanel } from "@/components/trading/chart-insight-panel";
+import { ForexNewsTicker } from "@/components/trading/forex-news-ticker";
 import type { ScanHistoryItem } from "@/lib/hooks/use-trading";
+import type { LiveChartHandle, LiveChartFeedStatus } from "@/components/trading/live-chart";
+import type { Granularity } from "@/app/api/market/data/route";
 
 // `lightweight-charts` reads `document` and creates a canvas at import time,
 // so the LiveChart module has to be loaded off the SSR path. The dynamic
@@ -26,11 +30,20 @@ const LiveChart = dynamic(() => import("@/components/trading/live-chart"), {
     />
   ),
 });
+
 export function TradingLensCore() {
   const { data: session } = useSession();
   const [capturedImage, setCapturedImage] = useState<string | File | null>(null);
   const [result, setResult] = useState<ScannerResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // Mirror the LiveChart's pair + feed status up into the parent so the
+  // ChartInsightPanel (narrator) and ForexNewsTicker (bottom marquee) react
+  // when the user changes focus or the feed goes live/polling.
+  const [chartSymbol, setChartSymbol] = useState<string>("EURUSD");
+  const [chartGranularity, setChartGranularity] = useState<Granularity>("1d");
+  const [chartStatus, setChartStatus] = useState<LiveChartFeedStatus>("loading");
+  const chartHandleRef = useRef<LiveChartHandle | null>(null);
 
   const analyzeMutation = useAnalyzeChart();
   const { data: scanHistory, isLoading: isHistoryLoading } = useScanHistory(!!session?.user);
@@ -124,9 +137,31 @@ export function TradingLensCore() {
         className="mb-8"
       />
 
-      {/* Live candle chart — observation path, sibling to the AI scan above. */}
+      {/* Live candle chart — observation path, sibling to the AI scan above.
+          Bubbles symbol/status up via callbacks so the narrator panel and
+          news ticker below can react to focus changes. */}
       <div className="mb-8">
-        <LiveChart initialSymbol="EURUSD" initialGranularity="1d" />
+        <LiveChart
+          ref={chartHandleRef}
+          initialSymbol="EURUSD"
+          initialGranularity="1d"
+          onSymbolChange={(symbol, granularity) => {
+            setChartSymbol(symbol);
+            setChartGranularity(granularity);
+          }}
+          onStatusChange={setChartStatus}
+        />
+      </div>
+
+      {/* Grok narrator — sits BELOW the chart so its content is always
+          visible at the same scroll position as the candle stream the
+          user is watching. */}
+      <div className="mb-8" data-chart-status={chartStatus}>
+        <ChartInsightPanel
+          chartRef={chartHandleRef}
+          symbol={chartSymbol}
+          granularity={chartGranularity}
+        />
       </div>
 
       {/* Result */}
@@ -205,6 +240,14 @@ export function TradingLensCore() {
           />
         </motion.div>
       ) : null}
+
+      {/* Bottom-scrolling Forex news ticker — sits at the END of the
+          page content so it reads as "the last thing on the chart lens
+          page" on both /lens (above the footer) and /dashboard (below
+          the scan history). Internally re-fetches when `pair` changes. */}
+      <div className="mt-12">
+        <ForexNewsTicker pair={chartSymbol} />
+      </div>
     </div>
   );
 }

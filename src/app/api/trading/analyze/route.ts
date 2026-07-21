@@ -7,6 +7,10 @@ import {
   buildUserMessage,
   classifyAnalysisType,
 } from "@/lib/llm";
+import {
+  NARRATOR_SYSTEM_PROMPT,
+  buildNarratorUserMessage,
+} from "@/lib/llm/narrator-prompt";
 
 /** Normalize any thrown value into a proper Error with message and stack */
 function toError(e: unknown): Error {
@@ -255,6 +259,10 @@ export async function POST(request: NextRequest) {
     const pair = formData.get("pair") as string | null;
     const timeframe = formData.get("timeframe") as string | null;
     const imageFile = formData.get("image") as File | null;
+    // Optional discriminator: live chart's Grok narrator sets this to "narrator"
+    // so the route skips the structured <SIGNAL>/<CONFIDENCE> parsing and the
+    // DB persistence designed for the scanner's chart-analysis use case.
+    const type = (formData.get("type") as string | null) ?? null;
 
     if (!prompt && !imageFile) {
       return NextResponse.json(
@@ -299,15 +307,26 @@ export async function POST(request: NextRequest) {
     let aiUsed = false;
     let providerName: string | null = null;
 
+    // `type === "narrator"` switches the system + user prompts to a
+    // speech-friendly tone and bypasses the scanner's structured
+    // `<SIGNAL>/<CONFIDENCE>` tag expectation. It is set by the
+    // `useChartNarrator` hook in `src/lib/hooks/use-chart-narrator.ts`.
+    const isNarrator = type === "narrator";
+
     try {
-      const systemPrompt = buildTradingSystemPrompt(
-        analysisType,
-        resolvedPair,
-        resolvedTimeframe
-      );
+      const systemPrompt = isNarrator
+        ? NARRATOR_SYSTEM_PROMPT
+        : buildTradingSystemPrompt(
+            analysisType,
+            resolvedPair,
+            resolvedTimeframe
+          );
 
       const userMessage = buildUserMessage(
-        prompt || `Provide a ${analysisType} analysis for ${resolvedPair} on the ${resolvedTimeframe} timeframe`,
+        isNarrator
+          ? prompt || buildNarratorUserMessage(resolvedPair, resolvedTimeframe)
+          : prompt ||
+            `Provide a ${analysisType} analysis for ${resolvedPair} on the ${resolvedTimeframe} timeframe`,
         imageUrl
       );
 
@@ -317,7 +336,7 @@ export async function POST(request: NextRequest) {
           { role: "system", content: systemPrompt },
           userMessage,
         ],
-        { temperature: 0.7 }
+        { temperature: isNarrator ? 0.6 : 0.7 }
       );
       responseContent = content;
       aiUsed = true;
@@ -328,6 +347,21 @@ export async function POST(request: NextRequest) {
       const mockFn = MOCK_RESPONSES[analysisType] ?? MOCK_RESPONSES.analyze;
       responseContent = mockFn(resolvedPair);
       providerName = "Demo";
+    }
+
+    // Narrator path: skip the structured tag parse + DB persistence.
+    // The reply is a transient speech transcript, not a persisted chart scan;
+    // we don't want it polluting the user's `chartAnalysis` history.
+    if (isNarrator) {
+      const trimmed = responseContent.trim();
+      return NextResponse.json({
+        content: trimmed,
+        aiUsed,
+        providerName,
+        pair: resolvedPair,
+        timeframe: resolvedTimeframe,
+        kind: "narrator" as const,
+      });
     }
 
     // Parse structured signal tags from the LLM response
