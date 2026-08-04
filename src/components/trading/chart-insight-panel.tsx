@@ -2,17 +2,26 @@
 
 /**
  * ChartInsightPanel — the narrator UI. Sits BELOW the LiveChart as a
- * sibling card. Owns the toggle (which doubles as the autoplay-block
- * user-gesture) and reflects the narrator status back to the user.
+ * sibling card. Reflects the narrator status back to the user and
+ * renders the live transcript on the page.
  *
- * Wiring rule: the Narrator toggle is OFF by default. Click it ON to
- *   (1) trust-gesture unlock the browser's speechSynthesis.
- *   (2) start the 5-minute heartbeat + symbol-change debounced triggers.
- * Click OFF to silence. Manual "Narrate now" button forces an immediate
- *   capture even when auto-triggers are off.
+ * Wiring rule: on `/lens/trading`, the Narrator auto-engages on first
+ *   load (no opt-in click needed). Returning visitors who previously
+ *   muted keep their muted preference.
+ *
+ * Audio autoplay note: even with the narrator ON at mount, browsers
+ *   gate `speechSynthesis` on user activation — the user sees the
+ *   live transcript immediately but hears nothing until any click /
+ *   press registers a user gesture. We surface this via a small
+ *   inline "Click anywhere to enable voice" hint that exits on the
+ *   first mousedown/keydown/touchstart. After that, sentence-by-sentence
+ *   speak() calls actually emit audio.
+ *
+ * Manual "Narrate now" forces an immediate capture even when
+ * auto-triggers fire on a 5-minute cadence.
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Headphones,
@@ -21,6 +30,7 @@ import {
   Volume2,
   RefreshCw,
   AlertCircle,
+  VolumeX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useChartNarrator, type NarratorStatus } from "@/lib/hooks/use-chart-narrator";
@@ -32,6 +42,13 @@ interface ChartInsightPanelProps {
   chartRef: React.RefObject<LiveChartHandle | null>;
   symbol: string;
   granularity: string;
+  /** Narrator-enabled boolean. Lifted to the parent so the value is
+   *  persisted across page refreshes via `useTradingLensPrefs`. The
+   *  panel no longer owns this state. */
+  enabled: boolean;
+  /** Called whenever the user toggles the Narrator on/off. The parent
+   *  drives persistence; this component just emits the change. */
+  onEnabledChange: (enabled: boolean) => void;
   className?: string;
 }
 
@@ -57,10 +74,35 @@ export function ChartInsightPanel({
   chartRef,
   symbol,
   granularity,
+  enabled,
+  onEnabledChange,
   className,
 }: ChartInsightPanelProps) {
-  const [enabled, setEnabled] = useState(false);
   const { speak, isSpeaking, supported, stop } = useSpeechSynthesis();
+  // `audioUnlocked` flips true on the FIRST user gesture (mousedown /
+  // keydown) anywhere in the document. Browsers gate `speechSynthesis`
+  // on user activation — without this unlock, the narrator auto-engages
+  // on page load and the user sees the live transcript but hears
+  // nothing. After any click/key, subsequent speak() calls actually
+  // emit audio.
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  useEffect(() => {
+    if (!supported || typeof window === "undefined") return;
+    const activate = () => {
+      setAudioUnlocked(true);
+      window.removeEventListener("mousedown", activate);
+      window.removeEventListener("keydown", activate);
+      window.removeEventListener("touchstart", activate);
+    };
+    window.addEventListener("mousedown", activate);
+    window.addEventListener("keydown", activate);
+    window.addEventListener("touchstart", activate);
+    return () => {
+      window.removeEventListener("mousedown", activate);
+      window.removeEventListener("keydown", activate);
+      window.removeEventListener("touchstart", activate);
+    };
+  }, [supported]);
 
   const handleInsight = useCallback((text: string) => {
     // No-op side-effects beyond the hook's internal state — the parent's
@@ -87,15 +129,21 @@ export function ChartInsightPanel({
   const toggle = () => {
     if (!supported) return;
     if (enabled) {
-      // Setting enabled=false also fires the hook's `enabled`-effect,
-      // which calls cancelInFlight() (stopping native TTS + dropping
-      // queued sentences). We belt-and-braces call stop() so the
-      // browser TTS is killed synchronously before the render commits.
+      // Toggling OFF bubbles up via `onEnabledChange`, which also flips
+      // `enabled=false` in the parent (driven by `useTradingLensPrefs`
+      // localStorage persistence). The hook's `enabled`-effect calls
+      // cancelInFlight() on the false transition (stopping native TTS
+      // + dropping queued sentences). We belt-and-braces call stop()
+      // here so the browser TTS is killed synchronously BEFORE the
+      // re-render commits — synchronous audio cancellation feels more
+      // responsive than waiting for React to flush.
       stop();
-      setEnabled(false);
+      onEnabledChange(false);
     } else {
-      setEnabled(true);
-      // Kick off an immediate narration so the user hears feedback immediately.
+      // Toggling ON bubbles up via `onEnabledChange` (which persists to
+      // localStorage) AND immediately kicks off a fresh capture so the
+      // user hears feedback without waiting for the next heartbeat.
+      onEnabledChange(true);
       void triggerNow();
     }
   };
@@ -224,6 +272,24 @@ export function ChartInsightPanel({
           >
             <Volume2 className="h-3 w-3 animate-pulse" />
             Speaking
+          </motion.div>
+        )}
+        {/* Voice-locked hint: shown when the narrator is ON but the
+            browser's autoplay gate hasn't been tripped yet. Decays on
+            the first user gesture (the `audioUnlocked` effect above). */}
+        {!audioUnlocked && enabled && supported && (
+          <motion.div
+            key="voice-locked"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.25 }}
+            role="status"
+            aria-live="polite"
+            className="absolute bottom-3 right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-background/70 backdrop-blur border border-primary/20 text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+          >
+            <VolumeX className="h-3 w-3" />
+            Click anywhere to enable voice
           </motion.div>
         )}
       </AnimatePresence>

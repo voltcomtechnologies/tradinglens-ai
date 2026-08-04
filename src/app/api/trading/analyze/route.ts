@@ -271,6 +271,26 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    // The client (chart narrator) sends a customized system prompt via
+    // `_systemPrompt` so the news-aware narration lands in the LLM. The
+    // server honours it only for `type=narrator` so the camera-scanner
+    // path stays tightly bound to `buildTradingSystemPrompt`.
+    //
+    // Length cap: in theory any authenticated user could post a
+    // body-sized `_systemPrompt` field and we'd echo it verbatim to
+    // the upstream LLM. We hard-cap at 8 KB — well above the actual
+    // ~2 KB narrator system prompts but well below the 4 MB body
+    // limit, so the worst-case attack vector inflates the upstream
+    // token bill by at most ~2k tokens, not 4 MB.
+    const MAX_CLIENT_SYSTEM_PROMPT_CHARS = 8_192;
+    const rawClientPrompt =
+      (formData.get("_systemPrompt") as string | null) || undefined;
+    const clientSystemPrompt =
+      rawClientPrompt &&
+      rawClientPrompt.length > 0 &&
+      rawClientPrompt.length <= MAX_CLIENT_SYSTEM_PROMPT_CHARS
+        ? rawClientPrompt
+        : undefined;
 
     let imageUrl: string | null = null;
 
@@ -283,7 +303,7 @@ export async function POST(request: NextRequest) {
 
     const resolvedPair = pair || "EURUSD";
     const resolvedTimeframe = timeframe || "1H";
-    const analysisType = classifyAnalysisType(prompt || "analyze");
+    const analysisType = classifyAnalysisType(prompt || "narrate");
     const isNarrator = type === "narrator";
 
     // The narrator flow supports a streaming path: when the client opts
@@ -324,7 +344,10 @@ export async function POST(request: NextRequest) {
     let userMessageContent: ReturnType<typeof buildUserMessage>;
 
     if (isNarrator) {
-      systemPrompt = NARRATOR_SYSTEM_PROMPT;
+      systemPrompt =
+        clientSystemPrompt && clientSystemPrompt.length > 0
+          ? clientSystemPrompt
+          : NARRATOR_SYSTEM_PROMPT;
       userPrompt = prompt || buildNarratorUserMessage(resolvedPair, resolvedTimeframe);
       userMessageContent = buildUserMessage(userPrompt, imageUrl);
     } else {

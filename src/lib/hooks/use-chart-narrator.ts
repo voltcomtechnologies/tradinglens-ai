@@ -16,6 +16,15 @@
  *   - 5-minute wall-clock tick     (only while document is visible)
  *   - explicit triggerNow() call   (from the "Narrate" button)
  *
+ * News integration:
+ *   - Before posting the multipart body, we fetch pair-scoped headlines
+ *     from /api/forex-news so Grok can mention upcoming news events
+ *     relevant to the focused pair. The fetch is promise.all'd with the
+ *     capture so we don't add latency. Headlines are cached in a
+ *     module-scope map by `pair` for 60s — moving between pairs
+ *     invalidates the cache; rapid capture fires on the SAME pair
+ *     reuse the cached list, avoiding RSS-endpoint hammering.
+ *
  * Cancellation:
  *   - On every new capture trigger, we abort the in-flight fetch via
  *     AbortController. The server-side route's `for await` loop throws
@@ -35,7 +44,11 @@
  */
 
 import { RefObject, useCallback, useEffect, useRef, useState } from "react";
-import { NARRATOR_SYSTEM_PROMPT, buildNarratorUserMessage } from "@/lib/llm/narrator-prompt";
+import {
+  NARRATOR_SYSTEM_PROMPT,
+  buildNarratorUserMessage,
+  type NarratorNewsHeadline,
+} from "@/lib/llm/narrator-prompt";
 import {
   SentenceSequencer,
   SseLineStreamer,
@@ -78,6 +91,68 @@ export interface UseChartNarratorResult {
 const DEBOUNCE_MS = 1200;
 const INTERVAL_MS = 5 * 60 * 1000;
 const MAX_BLOB_BYTES = 3_500_000;
+// Reuse the same headlines list for as long as the narrator's
+// 5-minute heartbeat typically lives. A cache SHORTER than the
+// heartbeat interval (e.g. the original 60s) misses the cache on
+// every heartbeat and re-fetches the RSS endpoint, defeating the
+// rate-limit purpose. Bumping TTL to match INTERVAL_MS means only
+// the debounced symbol-change trigger can ever cause a cache reset
+// before the next heartbeat. The upstream RSS itself refreshes every
+// ~5 min so there is no staleness cost.
+const HEADLINES_TTL_MS = 5 * 60 * 1000;
+
+// Module-scope headline cache keyed by pair symbol. We use module-scope
+// (rather than a ref) so that even if the React component remounts the
+// hook, repeat captures on the SAME pair skip the RSS roundtrip.
+interface HeadlinesCacheEntry {
+  fetchedAt: number;
+  headlines: NarratorNewsHeadline[];
+}
+const headlinesCache: Map<string, HeadlinesCacheEntry> = new Map();
+
+/**
+ * Server-validated response shape from /api/forex-news. We only read
+ * `items` — the route also returns `pair` / `source` / `cachedAt`.
+ */
+interface ForexNewsResponseBody {
+  items?: NarratorNewsHeadline[];
+}
+
+/**
+ * Fetch pair-scoped headlines, reusing a 60s cache per pair symbol. The
+ * hook calls this on every capture; the RSS endpoint only sees one
+ * request per pair per ~minute in the worst case.
+ *
+ * Returns [] silently on any failure (network 502, JSON parse, etc.).
+ * The narrator system prompt tolerates zero headlines — Grok simply
+ * won't reference any news in that capture.
+ */
+async function fetchHeadlinesForPair(
+  pair: string,
+  signal: AbortSignal,
+): Promise<NarratorNewsHeadline[]> {
+  const cached = headlinesCache.get(pair);
+  if (cached && Date.now() - cached.fetchedAt < HEADLINES_TTL_MS) {
+    return cached.headlines;
+  }
+  try {
+    const res = await fetch(
+      `/api/forex-news?pair=${encodeURIComponent(pair)}`,
+      {
+        cache: "no-store",
+        signal,
+      },
+    );
+    if (!res.ok) return cached?.headlines ?? [];
+    const data = (await res.json()) as ForexNewsResponseBody;
+    const next = Array.isArray(data.items) ? data.items : [];
+    headlinesCache.set(pair, { fetchedAt: Date.now(), headlines: next });
+    return next;
+  } catch {
+    // AbortError or network failure — fall through.
+    return cached?.headlines ?? [];
+  }
+}
 
 export function useChartNarrator(
   opts: UseChartNarratorOptions,
@@ -151,9 +226,32 @@ export function useChartNarrator(
     if (typeof navigator !== "undefined" && navigator.onLine === false) return;
 
     let blob: Blob | null = null;
+    let headlines: NarratorNewsHeadline[] = [];
+    const ac = new AbortController();
+    abortRef.current = ac;
+
+    // Capture canvas + fetch headlines IN PARALLEL. Both are independent;
+    // the slower of the two dictates the latency floor. Headlines fetch is
+    // best-effort: on failure we send the prompt without them and Grok
+    // simply skips the news sentence.
+    setStatus("capturing");
     try {
-      setStatus("capturing");
-      blob = await chartRef.current.captureCanvas();
+      const results = await Promise.allSettled([
+        chartRef.current.captureCanvas(),
+        fetchHeadlinesForPair(symbol, ac.signal),
+      ]);
+      const blobResult = results[0];
+      const newsResult = results[1];
+      if (blobResult.status === "fulfilled" && blobResult.value) {
+        blob = blobResult.value;
+      } else if (blobResult.status === "rejected") {
+        throw blobResult.reason instanceof Error
+          ? blobResult.reason
+          : new Error(String(blobResult.reason));
+      }
+      if (newsResult.status === "fulfilled") {
+        headlines = newsResult.value;
+      }
     } catch (e) {
       setError(`Capture failed: ${e instanceof Error ? e.message : String(e)}`);
       setStatus("error");
@@ -168,9 +266,8 @@ export function useChartNarrator(
       setStatus("error");
       return;
     }
+    if (ac.signal.aborted) return;
 
-    const ac = new AbortController();
-    abortRef.current = ac;
     const seq = new SentenceSequencer({ speak, onTail: () => undefined });
     sequencerRef.current = seq;
 
@@ -183,7 +280,14 @@ export function useChartNarrator(
       form.append("pair", symbol);
       form.append("timeframe", granularity);
       form.append("image", file);
-      form.append("prompt", buildNarratorUserMessage(symbol, granularity));
+      form.append(
+        "prompt",
+        buildNarratorUserMessage(symbol, granularity, headlines),
+      );
+      // Send the client-supplied system prompt verbatim. The route
+      // honours it only when `type === "narrator"` (see app/api/trading/
+      // analyze/route.ts) — non-narrator uploads always go through
+      // `buildTradingSystemPrompt` server-side.
       form.append("_systemPrompt", NARRATOR_SYSTEM_PROMPT);
 
       const res = await fetch("/api/trading/analyze", {

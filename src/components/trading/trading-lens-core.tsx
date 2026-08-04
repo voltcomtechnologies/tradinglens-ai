@@ -13,6 +13,7 @@ import { useVoice } from "@/lib/hooks/use-voice";
 import { dataUrlToFile } from "@/lib/utils";
 import { ChartInsightPanel } from "@/components/trading/chart-insight-panel";
 import { ForexNewsTicker } from "@/components/trading/forex-news-ticker";
+import { useTradingLensPrefs } from "@/lib/hooks/use-trading-lens-prefs";
 import type { ScanHistoryItem } from "@/lib/hooks/use-trading";
 import type { LiveChartHandle, LiveChartFeedStatus } from "@/components/trading/live-chart";
 import type { Granularity } from "@/app/api/market/data/route";
@@ -37,11 +38,20 @@ export function TradingLensCore() {
   const [result, setResult] = useState<ScannerResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // Mirror the LiveChart's pair + feed status up into the parent so the
-  // ChartInsightPanel (narrator) and ForexNewsTicker (bottom marquee) react
-  // when the user changes focus or the feed goes live/polling.
-  const [chartSymbol, setChartSymbol] = useState<string>("EURUSD");
-  const [chartGranularity, setChartGranularity] = useState<Granularity>("1d");
+  // Last-session prefs (symbol + timeframe + Narrator-enabled boolean)
+  // are persisted via `useTradingLensPrefs` so a page refresh resumes
+  // where the user left off. The hook guards against SSR/CSR
+  // hydration mismatches by returning DEFAULTS on the first render
+  // and swapping to the stored value inside a mount-only `useEffect`.
+  const {
+    hydrated: prefsHydrated,
+    symbol: chartSymbol,
+    granularity: chartGranularity,
+    narratorEnabled,
+    setSymbol: setChartSymbol,
+    setGranularity: setChartGranularity,
+    setNarratorEnabled,
+  } = useTradingLensPrefs();
   const [chartStatus, setChartStatus] = useState<LiveChartFeedStatus>("loading");
   const chartHandleRef = useRef<LiveChartHandle | null>(null);
 
@@ -67,10 +77,20 @@ export function TradingLensCore() {
           ? capturedImage
           : await dataUrlToFile(capturedImage, "chart-scan.jpg");
 
+      // Use the in-focus pair + timeframe so Grok sees the user's actual
+      // context. Before this fix the request hardcoded "EURUSD" / "1H",
+      // so even when a user uploaded a USDJPY chart the LLM was told it
+      // was a EURUSD 1H chart — Grok then reported wrong levels.
+      // Timeframe is rendered uppercase ("1H" / "1D") to match the UI
+      // pill labels shown above the live chart.
+      // `Granularity` is the literal union "1h" | "1d", so the else
+      // branch is statically "1D" — no `toUpperCase()` fallback needed.
+      const timeframeLabel = chartGranularity === "1h" ? "1H" : "1D";
+
       const data = await analyzeMutation.mutateAsync({
         prompt: "Analyze this forex chart and provide a clear BUY, SELL, or HOLD recommendation with key levels and reasoning.",
-        pair: "EURUSD",
-        timeframe: "1H",
+        pair: chartSymbol,
+        timeframe: timeframeLabel,
         image: imageFile,
       });
 
@@ -79,8 +99,8 @@ export function TradingLensCore() {
       const scanResult: ScannerResult = {
         signal,
         confidence,
-        pair: data.pair || "EURUSD",
-        timeframe: data.timeframe || "1H",
+        pair: data.pair || chartSymbol,
+        timeframe: data.timeframe || timeframeLabel,
         analysis: data.content,
       };
 
@@ -97,7 +117,7 @@ export function TradingLensCore() {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [capturedImage, analyzeMutation, isSupported, speak]);
+  }, [capturedImage, analyzeMutation, isSupported, speak, chartSymbol, chartGranularity]);
 
   const handleSpeak = useCallback(() => {
     if (!result) return;
@@ -139,12 +159,25 @@ export function TradingLensCore() {
 
       {/* Live candle chart — observation path, sibling to the AI scan above.
           Bubbles symbol/status up via callbacks so the narrator panel and
-          news ticker below can react to focus changes. */}
+          news ticker below can react to focus changes.
+          `key` is keyed off the hydrated-vs-default flag AND the
+          user-selected symbol/timeframe so the chart re-mounts once
+          on hydration completion (default → persisted value) and again
+          whenever the user picks a different pair. Lightweight Charts
+          re-mount is fast (~150ms) and deterministic; the alternative
+          (no key) would leave LiveChart rendering with `initialSymbol`
+          set to whatever was passed on the FIRST render — the default
+          — even though the user had selected e.g. GBPUSD previously. */}
       <div className="mb-8">
         <LiveChart
+          key={
+            prefsHydrated
+              ? `${chartSymbol}|${chartGranularity}`
+              : "__default__"
+          }
           ref={chartHandleRef}
-          initialSymbol="EURUSD"
-          initialGranularity="1d"
+          initialSymbol={chartSymbol}
+          initialGranularity={chartGranularity}
           onSymbolChange={(symbol, granularity) => {
             setChartSymbol(symbol);
             setChartGranularity(granularity);
@@ -161,6 +194,8 @@ export function TradingLensCore() {
           chartRef={chartHandleRef}
           symbol={chartSymbol}
           granularity={chartGranularity}
+          enabled={narratorEnabled}
+          onEnabledChange={setNarratorEnabled}
         />
       </div>
 

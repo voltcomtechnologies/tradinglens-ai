@@ -12,6 +12,8 @@ import {
   AlertCircle,
   Maximize,
   Minimize,
+  ScreenShare,
+  Square,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -39,7 +41,7 @@ export function TradingScanner({
   isAnalyzing = false,
   className,
 }: TradingScannerProps) {
-  const [mode, setMode] = useState<"camera" | "upload">("camera");
+  const [mode, setMode] = useState<"camera" | "upload" | "screen">("camera");
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -48,9 +50,42 @@ export function TradingScanner({
   const [isRequestingCamera, setIsRequestingCamera] = useState(true);
   const [announcement, setAnnouncement] = useState<string>("");
   const [isExpanded, setIsExpanded] = useState(true);
+
+  // --- Screen-share state -------------------------------------------
+  // `screenStream` holds the live `getDisplayMedia()` MediaStream while
+  // the user is mid-presentation; we render the frames in a hidden
+  // `<video>` so the viewport shows what's being shared. The user
+  // presses "Snap Screen" to grab a single JPEG frame into
+  // `capturedImage` (the canonical "image-ready" state used by the
+  // scan button). At that point we stop all tracks on the stream so
+  // the share session ends and we revert to the still-preview UI.
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [screenError, setScreenError] = useState<string | null>(null);
+  const [screenSupported, setScreenSupported] = useState(true);
+  // Mirror `screenStream` into a ref so the unmount cleanup below can
+  // stop the LATEST live tracks even when the user starts a share and
+  // then closes the tab. A deps-`[]` useEffect cleanup captures the
+  // first-render closure; without this ref, unmount would only see
+  // `screenStream = null` and the OS would keep showing
+  // "Sharing your screen" until the tab process is reaped.
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const screenVideoRef = useRef<HTMLVideoElement>(null);
   const hasAnnouncedGranted = useRef(false);
   const webcamRef = useRef<Webcam>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Capability detection for `getDisplayMedia`. Older browsers (and
+  // some embedded webviews) don't expose it; we surface a friendly
+  // "not supported" UI instead of throwing.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices) {
+      setScreenSupported(false);
+      return;
+    }
+    setScreenSupported(
+      typeof navigator.mediaDevices.getDisplayMedia === "function",
+    );
+  }, []);
 
   // Check camera permission status on mount
   useEffect(() => {
@@ -91,7 +126,151 @@ export function TradingScanner({
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(null);
     }
+    // Retake from screen-share mode must end the active presentation so
+    // we don't leak a `MediaStreamTrack` after the user backs out. We
+    // read the active stream from the ref so the unmount cleanup below
+    // sees the SAME cleared value (no stale closure race).
+    const liveStream = screenStreamRef.current;
+    if (liveStream) {
+      liveStream.getTracks().forEach((t) => {
+        try {
+          t.stop();
+        } catch {
+          // already stopped
+        }
+      });
+      screenStreamRef.current = null;
+      setScreenStream(null);
+      if (screenVideoRef.current) {
+        screenVideoRef.current.srcObject = null;
+      }
+    }
+    setScreenError(null);
   }, [previewUrl]);
+
+  // ─── screen-share handlers ──────────────────────────────────────────
+  // `startScreenShare` calls `navigator.mediaDevices.getDisplayMedia()`
+  // and surfaces the user-selected source (a tab, window, or whole
+  // screen) into a hidden `<video>` element. The user then presses
+  // "Snap Screen" to grab a still JPEG into the same `capturedImage`
+  // state used by camera/upload.
+  const startScreenShare = useCallback(async () => {
+    if (!screenSupported) return;
+    setScreenError(null);
+    // Make sure any prior capture is cleared so we don't show stale
+    // frames behind the live share.
+    setCapturedImage(null);
+    setUploadedFile(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: 30 },
+        audio: false,
+      });
+      // Mirror the new stream into the ref synchronously so an unmount
+      // (or a subsequent startScreenShare) can see it immediately
+      // without waiting for React's commit phase.
+      screenStreamRef.current = stream;
+      // Some browsers fire a `track.onended` event when the user ends
+      // the share via the browser chrome's "Stop sharing" button. We
+      // mirror that state into React so the UI flips back to the
+      // "Start Share" prompt instead of holding the dead stream.
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.addEventListener("ended", () => {
+          setScreenStream((current) => {
+            if (current) {
+              current.getTracks().forEach((t) => {
+                try {
+                  t.stop();
+                } catch {
+                  // already stopped
+                }
+              });
+            }
+            screenStreamRef.current = null;
+            return null;
+          });
+          if (screenVideoRef.current) {
+            screenVideoRef.current.srcObject = null;
+          }
+          setAnnouncement("Screen sharing ended.");
+        });
+      }
+      setScreenStream(stream);
+      if (screenVideoRef.current) {
+        screenVideoRef.current.srcObject = stream;
+        // `muted` + `playsInline` so autoplay + browser policies don't
+        // reject the silent preview render.
+        screenVideoRef.current.muted = true;
+        try {
+          await screenVideoRef.current.play();
+        } catch {
+          // Some browsers require a user gesture to start playback. We
+          // still surface the stream to the user (the video element is
+          // visible); they'll click "Snap" next anyway.
+        }
+      }
+      setAnnouncement("Screen sharing started. Press Snap to capture.");
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Screen share was cancelled.";
+      setScreenError(msg);
+      setAnnouncement(`Screen share unavailable. ${msg}`);
+    }
+  }, [screenSupported, previewUrl]);
+
+  const snapScreen = useCallback(() => {
+    const video = screenVideoRef.current;
+    if (!video || !screenStream) return;
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if (!w || !h) {
+      setScreenError("Couldn't read screen dimensions. Try again.");
+      return;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      setScreenError("Browser unsupported canvas operations.");
+      return;
+    }
+    ctx.drawImage(video, 0, 0, w, h);
+    // JPEG at 0.92 is a good trade-off: text/numbers on charts stay
+    // crisp enough for OCR-ish LLM reads, but size stays well under
+    // the 4MB Next.js body cap. Canvas screenshots are the same shape
+    // as the camera capture path so the downstream analyze pipeline
+    // needs zero changes.
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+    setCapturedImage(dataUrl);
+    setUploadedFile(null);
+    setPreviewUrl(null);
+    onImageCapture?.(dataUrl);
+    setAnnouncement("Screen captured.");
+    // End the display session now that we have the still — keeping the
+    // stream alive after capture is wasteful (and the user's screen
+    // is being broadcast to themselves with no further UI value).
+    // Read from the ref so unmount cleanup sees the cleared value.
+    // `screenStream` from the closure gives us the same object here
+    // since `snapScreen` was just invoked from a click handler.
+    screenStream.getTracks().forEach((t) => {
+      try {
+        t.stop();
+      } catch {
+        // already stopped
+      }
+    });
+    screenStreamRef.current = null;
+    setScreenStream(null);
+    if (screenVideoRef.current) {
+      screenVideoRef.current.srcObject = null;
+    }
+  }, [screenStream, onImageCapture]);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
@@ -125,7 +304,11 @@ export function TradingScanner({
   const hasImage = capturedImage || uploadedFile;
   const imageSrc = capturedImage || previewUrl || "";
 
-  // Cleanup blob URLs on unmount
+  // Cleanup blob URLs and any live display-capture stream on unmount.
+  // Without the track-STOP branch, navigating away from /lens/trading
+  // would leak a `display-capture` permission handle into the OS — the
+  // browser shows an active "Sharing your screen" indicator until the
+  // tab is closed.
   useEffect(() => {
     return () => {
       if (previewUrl) {
@@ -133,6 +316,53 @@ export function TradingScanner({
       }
     };
   }, [previewUrl]);
+
+  // Mode-switch cleanup: when the user toggles AWAY from screen mode
+  // before snapping, we must explicitly stop the live display tracks
+  // — otherwise the OS keeps the "Sharing your screen" indicator
+  // alive in the background even though our viewport is showing the
+  // camera or the upload dropzone. Triggering off `[mode]` (not via
+  // an `if (mode === "screen")` early-return) means we only ever
+  // clean up on the transition AWAY from screen.
+  useEffect(() => {
+    if (mode === "screen") return;
+    const liveStream = screenStreamRef.current;
+    if (liveStream) {
+      liveStream.getTracks().forEach((t) => {
+        try {
+          t.stop();
+        } catch {
+          // already stopped
+        }
+      });
+      screenStreamRef.current = null;
+      setScreenStream(null);
+      if (screenVideoRef.current) {
+        screenVideoRef.current.srcObject = null;
+      }
+    }
+  }, [mode]);
+
+  useEffect(() => {
+    return () => {
+      // Read from the REF (not the closure) so we get the latest live
+      // stream. handleRetake etc. update `screenStreamRef.current`
+      // synchronously when tracks are stopped, so an unmount after
+      // handing back a captured frame doesn't re-stop an already-
+      // ended stream.
+      const stream = screenStreamRef.current;
+      if (stream) {
+        stream.getTracks().forEach((t) => {
+          try {
+            t.stop();
+          } catch {
+            // already stopped
+          }
+        });
+        screenStreamRef.current = null;
+      }
+    };
+  }, []);
 
   // Announce file rejection errors to screen readers
   useEffect(() => {
@@ -243,6 +473,20 @@ export function TradingScanner({
             <Upload className="h-3.5 w-3.5" />
             Upload
           </button>
+          <button
+            onClick={() => setMode("screen")}
+            aria-pressed={mode === "screen"}
+            aria-label="Screen share"
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+              mode === "screen"
+                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <ScreenShare className="h-3.5 w-3.5" />
+            Screen
+          </button>
         </div>
         </div>
       </div>
@@ -304,7 +548,7 @@ export function TradingScanner({
                   />
                 )}
               </div>
-            ) : (
+            ) : mode === "upload" ? (
               <div
                 {...getRootProps()}
                 className={cn(
@@ -322,6 +566,121 @@ export function TradingScanner({
                 <p className="text-sm text-muted-foreground text-center max-w-md">
                   Drag & drop a forex chart image, or click to browse. Supports PNG, JPG, WEBP up to 10MB.
                 </p>
+              </div>
+            ) : (
+              // Screen-share viewport — three states:
+              //   1. unsupported browser → static hint + disabled state
+              //   2. error / cancelled → error card with retry CTA
+              //   3. live stream  → <video> with overlay "Snap" button
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                {!screenSupported ? (
+                  <div className="flex flex-col items-center justify-center text-center p-8 max-w-md">
+                    <div className="w-16 h-16 rounded-full bg-muted/60 flex items-center justify-center mb-4">
+                      <ScreenShare className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h4 className="text-lg font-semibold mb-2">Screen share not supported</h4>
+                    <p className="text-sm text-muted-foreground">
+                      This browser or device doesn&rsquo;t expose
+                      <code className="px-1 mx-0.5 rounded bg-muted text-foreground/90">getDisplayMedia</code>.
+                      Try the latest Chrome, Edge, or Firefox.
+                    </p>
+                  </div>
+                ) : screenError && !screenStream ? (
+                  <div className="flex flex-col items-center justify-center text-center p-8 max-w-md">
+                    <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                      <AlertCircle className="h-8 w-8 text-destructive" />
+                    </div>
+                    <h4 className="text-lg font-semibold mb-2">Screen share cancelled</h4>
+                    <p className="text-sm text-muted-foreground mb-4">{screenError}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={startScreenShare}
+                      className="border-primary/20"
+                    >
+                      <ScreenShare className="h-4 w-4 mr-2" />
+                      Try again
+                    </Button>
+                  </div>
+                ) : screenStream ? (
+                  <>
+                    <video
+                      ref={screenVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      data-testid="screen-share-video"
+                      className="w-full h-full object-contain bg-black"
+                    />
+                    {/* Center overlay CTA — single-tap to grab a still. */}
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2">
+                      <Button
+                        onClick={snapScreen}
+                        data-testid="snap-screen"
+                        className="bg-primary hover:bg-primary/90 glow-orange shadow-lg shadow-primary/30"
+                      >
+                        <Camera className="h-4 w-4 mr-2" />
+                        Snap Screen
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          // Stop the display session without capturing a
+                          // still frame. Same as the browser chrome's
+                          // "Stop sharing" button.
+                          screenStream.getTracks().forEach((t) => {
+                            try {
+                              t.stop();
+                            } catch {
+                              // already stopped
+                            }
+                          });
+                          screenStreamRef.current = null;
+                          setScreenStream(null);
+                          if (screenVideoRef.current) {
+                            screenVideoRef.current.srcObject = null;
+                          }
+                          setAnnouncement("Screen sharing stopped.");
+                        }}
+                        className="border-primary/20 bg-background/70 backdrop-blur"
+                      >
+                        <Square className="h-4 w-4 mr-2" />
+                        Stop
+                      </Button>
+                    </div>
+                    {/* Animated corner brackets, identical chrome to
+                        camera/upload so the swap feels familiar. */}
+                    <div className="pointer-events-none absolute inset-0">
+                      <div className="absolute top-4 left-4 w-10 h-10 border-l-2 border-t-2 border-primary/80 rounded-tl-lg shadow-[0_0_12px_hsl(var(--primary)/0.4)]" />
+                      <div className="absolute top-4 right-4 w-10 h-10 border-r-2 border-t-2 border-primary/80 rounded-tr-lg shadow-[0_0_12px_hsl(var(--primary)/0.4)]" />
+                      <div className="absolute bottom-4 left-4 w-10 h-10 border-l-2 border-b-2 border-primary/80 rounded-bl-lg shadow-[0_0_12px_hsl(var(--primary)/0.4)]" />
+                      <div className="absolute bottom-4 right-4 w-10 h-10 border-r-2 border-b-2 border-primary/80 rounded-br-lg shadow-[0_0_12px_hsl(var(--primary)/0.4)]" />
+                      <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/90 text-white text-[10px] font-semibold uppercase tracking-wider animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                        Sharing
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  // Pre-share idle CTA.
+                  <div className="flex flex-col items-center justify-center text-center p-8 max-w-md">
+                    <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4 border border-primary/20 border-dashed">
+                      <ScreenShare className="h-10 w-10 text-primary" />
+                    </div>
+                    <h4 className="text-lg font-semibold mb-2">Share your screen</h4>
+                    <p className="text-sm text-muted-foreground mb-4 max-w-sm">
+                      Share a tab, window, or your whole screen so Grok can analyze the chart in view. Press <kbd className="px-1 py-0.5 rounded border border-border text-[10px]">Snap Screen</kbd> when ready.
+                    </p>
+                    <Button
+                      onClick={startScreenShare}
+                      data-testid="start-screen-share"
+                      className="bg-primary hover:bg-primary/90 glow-orange shadow-lg shadow-primary/20"
+                    >
+                      <ScreenShare className="h-4 w-4 mr-2" />
+                      Start screen share
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
