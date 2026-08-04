@@ -1,19 +1,37 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
   BarChart3,
   RefreshCw,
-  Clock,
   Maximize2,
   Minimize2,
   Loader2,
+  Activity,
+  Layers,
+  Gauge,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MAJOR_PAIRS } from "@/types";
-import type { MarketDataResponse } from "@/app/api/market/data/route";
+import type { MarketDataResponse, Granularity } from "@/app/api/market/data/route";
+import {
+  summarizePriceAction,
+  summarizeMaCross,
+  summarizeRsiMacd,
+  type InsightCard,
+  type Sentiment,
+} from "@/lib/insights";
+import { useTradingLensPrefs } from "@/lib/hooks/use-trading-lens-prefs";
+import {
+  TIMEFRAME_PILLS,
+  defaultTimeframeForBucket,
+  displayTimeframeToBucket,
+  snapToBucket,
+  type DisplayTimeframe,
+} from "@/lib/utils/timeframe-bucket";
 
 // ── Fallback base prices for when the API is unavailable ──
 
@@ -71,10 +89,57 @@ const INDICATORS = [
   { id: "bb", label: "Bollinger", active: false },
 ];
 
+// ── Live-insight card visual mapping ──
+// Icons are static (one per card id); color comes from each card's
+// sentiment bucket so bullish/red/neutral each get distinct styling.
+
+const INSIGHT_VISUALS: Record<InsightCard["id"], { icon: LucideIcon }> = {
+  "price-action": { icon: Activity },
+  "ma-cross": { icon: Layers },
+  "rsi-macd": { icon: Gauge },
+};
+
+const SENTIMENT_TONE: Record<
+  Sentiment,
+  { bg: string; icon: string; chipBorder: string; chipText: string }
+> = {
+  bullish: {
+    bg: "bg-emerald-500/10",
+    icon: "text-emerald-400",
+    chipBorder: "border-emerald-500/30",
+    chipText: "text-emerald-400",
+  },
+  bearish: {
+    bg: "bg-red-500/10",
+    icon: "text-red-400",
+    chipBorder: "border-red-500/30",
+    chipText: "text-red-400",
+  },
+  neutral: {
+    bg: "bg-slate-500/10",
+    icon: "text-slate-400",
+    chipBorder: "border-slate-500/30",
+    chipText: "text-slate-400",
+  },
+};
+
 export default function ChartLensPage() {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const [selectedPair, setSelectedPair] = useState("EURUSD");
-  const [selectedTimeframe, setSelectedTimeframe] = useState("1H");
+  // Persisted pair + persisted-granularity bucket come from the same
+  // hook Trading Lens uses, so the user's choice on either product
+  // survives a navigation and resumes on the other. The displayed
+  // pill keeps Chart Lens's 6-way vocabulary (`TIMEFRAME_PILLS`) by
+  // initializing from the bucket on mount and writing the bucket back
+  // on click — see `handleTimeframeChange` below.
+  const {
+    symbol: selectedPair,
+    setSymbol: setSelectedPair,
+    granularity,
+    setGranularity,
+  } = useTradingLensPrefs();
+  const [displayedTf, setDisplayedTf] = useState<DisplayTimeframe>(() =>
+    defaultTimeframeForBucket(granularity),
+  );
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [candleData, setCandleData] = useState<Array<{ time: string; open: number; high: number; low: number; close: number }>>([]);
   const [dailyCandles, setDailyCandles] = useState<Array<{ time: string; open: number; high: number; low: number; close: number }>>([]);
@@ -87,12 +152,44 @@ export default function ChartLensPage() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [dataSource, setDataSource] = useState<"api" | "fallback">("fallback");
 
+  // Local pill click handler — keep the displayed pill choice
+  // (e.g. "5m") for the current visit AND persist the bucket
+  // ("1h") so navigating to Trading Lens shows the matching pill.
+  const handleTimeframeChange = useCallback(
+    (tf: DisplayTimeframe) => {
+      setDisplayedTf(tf);
+      const bucket = displayTimeframeToBucket(tf);
+      if (granularity !== bucket) setGranularity(bucket);
+    },
+    [granularity, setGranularity],
+  );
+
+  // Cold-load re-sync for `displayedTf`. The hook returns DEFAULTS on
+  // the first render, then the mount-only hydration effect flips
+  // `granularity` to the persisted bucket on the second render —
+  // `displayedTf` was already locked by its lazy initializer to the
+  // canonical pill for the DEFAULT bucket, so the active pill would
+  // be visibly wrong until the user clicks. This effect re-snaps
+  // only when the displayed pill's bucket disagrees with the
+  // persisted bucket, so within-bucket finer choices ("5m" inside
+  // "1h") survive an external bucket flip without being clobbered.
+  useEffect(() => {
+    setDisplayedTf((prev) => snapToBucket(prev, granularity));
+  }, [granularity]);
+
   // ── Fetch real market data from Alpha Vantage ──
 
-  const fetchMarketData = useCallback(async (symbol: string) => {
+  const fetchMarketData = useCallback(async (symbol: string, gf: Granularity) => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/market/data?symbol=${symbol}&candles=true`);
+      // Granularity is appended so the route actually returns the
+      // bucket the user picked — previously this page never passed
+      // it, so picking "5m" produced daily candles silently. The
+      // hook bucket narrows to "1h"/"1d"; Chart Lens' 4 finer pills
+      // collapse to "1h" via the boundary translator above.
+      const res = await fetch(
+        `/api/market/data?symbol=${symbol}&candles=true&granularity=${gf}`,
+      );
       const data: MarketDataResponse = await res.json();
 
       if (data.quote) {
@@ -147,18 +244,19 @@ export default function ChartLensPage() {
     }
   }, []);
 
-  // Fetch data when pair changes
+  // Fetch data when pair OR persisted granularity bucket changes.
   useEffect(() => {
-    fetchMarketData(selectedPair);
-  }, [selectedPair, fetchMarketData]);
+    fetchMarketData(selectedPair, granularity);
+  }, [selectedPair, granularity, fetchMarketData]);
 
-  // Poll for price updates every 60 seconds
+  // Poll for price updates every 60 seconds — at the current pair +
+  // persisted bucket so the cadence respects the user's last choice.
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchMarketData(selectedPair);
+      fetchMarketData(selectedPair, granularity);
     }, 60_000);
     return () => clearInterval(interval);
-  }, [selectedPair, fetchMarketData]);
+  }, [selectedPair, granularity, fetchMarketData]);
 
   // Simulate smooth price updates between API calls
   useEffect(() => {
@@ -192,6 +290,36 @@ export default function ChartLensPage() {
 
     return () => clearInterval(interval);
   }, [selectedPair, isLoading]);
+
+  // ── Live insight cards ──
+  // Recomputed only when the candle series itself changes (which already
+  // happens on pair change, poll tick, and the 2-second jitter tick).
+  // Below the warm-up threshold we render three neutral "loading" cards
+  // so the layout stays stable while data streams in — the indicators
+  // can't produce stable values with fewer than ~35 intraday bars.
+
+  const insightCards: InsightCard[] = useMemo(() => {
+    const warmingUp = (id: InsightCard["id"], title: string): InsightCard => ({
+      id,
+      title,
+      description: "Loading more data…",
+      tagline: "Warming up",
+      sentiment: "neutral",
+      ready: false,
+    });
+    if (candleData.length < 35) {
+      return [
+        warmingUp("price-action", "Price Action"),
+        warmingUp("ma-cross", "MA Cross"),
+        warmingUp("rsi-macd", "RSI / MACD"),
+      ];
+    }
+    return [
+      summarizePriceAction(candleData),
+      summarizeMaCross(candleData),
+      summarizeRsiMacd(candleData),
+    ];
+  }, [candleData]);
 
   // ── SVG Candlestick chart ──
 
@@ -405,13 +533,13 @@ export default function ChartLensPage() {
               ))}
             </select>
             <div className="flex bg-muted rounded-lg p-0.5">
-              {["1m", "5m", "15m", "1H", "4H", "1D"].map((tf) => (
+              {TIMEFRAME_PILLS.map((tf) => (
                 <button
                   key={tf}
-                  onClick={() => setSelectedTimeframe(tf)}
+                  onClick={() => handleTimeframeChange(tf)}
                   className={cn(
                     "px-2.5 py-1 text-xs rounded-md transition-colors",
-                    selectedTimeframe === tf
+                    displayedTf === tf
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   )}
@@ -426,7 +554,7 @@ export default function ChartLensPage() {
             <button
               className="p-1.5 rounded-lg hover:bg-muted transition-colors"
               title="Refresh"
-              onClick={() => fetchMarketData(selectedPair)}
+              onClick={() => fetchMarketData(selectedPair, granularity)}
             >
               <RefreshCw className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -514,44 +642,55 @@ export default function ChartLensPage() {
           )}
         </motion.div>
 
-        {/* AI Insights */}
-        {[
-          {
-            title: "Market Sentiment",
-            description: "Bullish momentum with potential resistance at recent highs. Watch for breakout confirmation.",
-            icon: Clock,
-            color: "text-blue-400",
-            bg: "bg-blue-500/10",
-          },
-          {
-            title: "Pattern Detection",
-            description: "Ascending triangle forming on 1H. Breakout above resistance would confirm bullish continuation.",
-            icon: TrendingUp,
-            color: "text-emerald-400",
-            bg: "bg-emerald-500/10",
-          },
-          {
-            title: "Technical Signals",
-            description: "RSI at 58 (neutral), MACD bullish crossover, price above 50 MA. Favorable conditions.",
-            icon: BarChart3,
-            color: "text-violet-400",
-            bg: "bg-violet-500/10",
-          },
-        ].map((insight, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 + i * 0.05 }}
-            className="rounded-xl border border-border bg-card p-5 hover:border-primary/30 transition-colors"
-          >
-            <div className={cn("p-2.5 rounded-lg w-fit mb-3", insight.bg)}>
-              <insight.icon className={cn("h-5 w-5", insight.color)} />
-            </div>
-            <h3 className="font-semibold mb-1 text-sm">{insight.title}</h3>
-            <p className="text-xs text-muted-foreground leading-relaxed">{insight.description}</p>
-          </motion.div>
-        ))}
+        {/* Live insights — derived from `candleData` via pure local
+            indicator math (`src/lib/indicators.ts` + `src/lib/insights.ts`).
+            Recomputes when the candle series changes; no Grok / no network. */}
+        {insightCards.map((card, i) => {
+          const visuals = INSIGHT_VISUALS[card.id];
+          const Icon = visuals.icon;
+          const tone = SENTIMENT_TONE[card.sentiment];
+          return (
+            <motion.div
+              key={card.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 + i * 0.05 }}
+              data-testid={`insight-${card.id}`}
+              data-ready={card.ready ? "true" : "false"}
+              data-sentiment={card.sentiment}
+              className={cn(
+                "rounded-xl border bg-card p-5 transition-colors",
+                card.ready
+                  ? "border-border hover:border-primary/30"
+                  : "border-dashed border-border/60 opacity-70",
+              )}
+            >
+              <div className={cn("p-2.5 rounded-lg w-fit mb-3", tone.bg)}>
+                <Icon className={cn("h-5 w-5", tone.icon)} />
+              </div>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <h3 className="font-semibold text-sm">{card.title}</h3>
+                <span
+                  className={cn(
+                    "text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border",
+                    tone.chipBorder,
+                    tone.chipText,
+                  )}
+                >
+                  {card.tagline}
+                </span>
+              </div>
+              <p
+                className={cn(
+                  "text-xs leading-relaxed",
+                  card.ready ? "text-muted-foreground" : "text-muted-foreground/70 italic",
+                )}
+              >
+                {card.description}
+              </p>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );
