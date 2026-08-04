@@ -154,16 +154,14 @@ export function Navbar({ user }: NavbarProps) {
                       : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                   )}
                 >
+                  {/* Active-pill background. Same fix as DashboardSidebar
+                    — previously a Framer Motion `layoutId="navbar-active"`
+                    element whose shared-layout portal-rendered overlay
+                    could swallow the next click on the navbar mid-spring.
+                    Pointer-events-none here is defensive even though the
+                    navbar isn't strictly an intra-app shell portal layer. */}
                   {isActive && (
-                    <motion.div
-                      layoutId="navbar-active"
-                      className="absolute inset-0 bg-primary/10 rounded-lg border border-primary/20"
-                      transition={{
-                        type: "spring",
-                        bounce: 0.2,
-                        duration: 0.6,
-                      }}
-                    />
+                    <div className="absolute inset-0 bg-primary/10 rounded-lg border border-primary/20 pointer-events-none transition-colors" />
                   )}
                   <span className="relative flex items-center gap-1.5">
                     <link.icon className="h-4 w-4" />

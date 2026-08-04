@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 import {
   BookOpen,
   Brain,
@@ -125,12 +124,15 @@ export function DashboardSidebar({ user, sidebarOpen, onToggle }: SidebarProps) 
                         collapsed && "justify-center px-0"
                       )}
                     >
+                      {/* Active-pill background. Previously a Framer Motion
+                        `layoutId="sidebar-active"` element; that shared-
+                        layout animation renders a fixed-position overlay
+                        into a body-root portal during cross-page re-mounts
+                        and could swallow the very next pointer event on
+                        the sidebar. Plain conditional render is cheaper,
+                        easier to test, and never blocks clicks. */}
                       {isActive && (
-                        <motion.div
-                          layoutId="sidebar-active"
-                          className="absolute inset-0 bg-primary/10 rounded-lg"
-                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                        />
+                        <div className="absolute inset-0 bg-primary/10 rounded-lg pointer-events-none transition-colors" />
                       )}
                       <link.icon className="relative h-5 w-5 shrink-0" />
                       {!collapsed && (
