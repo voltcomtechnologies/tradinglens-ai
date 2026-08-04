@@ -53,6 +53,7 @@ import {
   SentenceSequencer,
   SseLineStreamer,
   extractDelta,
+  extractStreamError,
 } from "@/lib/narration/sentence-sequencer";
 import type { LiveChartHandle } from "@/components/trading/live-chart";
 
@@ -311,6 +312,12 @@ export function useChartNarrator(
       const decoder = new TextDecoder();
       const sse = new SseLineStreamer();
       let cumulative = "";
+      // If the server emitted an `{error:"..."}` event mid-stream, we
+      // surface its message verbatim instead of the generic "empty
+      // reply" fallback — the upstream cause (auth, content-filter,
+      // model unavailable) is far more useful for the user than a
+      // blanket error string.
+      let upstreamError: string | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -321,27 +328,58 @@ export function useChartNarrator(
         const chunk = decoder.decode(value, { stream: true });
         const events = sse.push(chunk);
         for (const evt of events) {
+          // Order matters: error events are surfaced FIRST so a stream
+          // that starts with content then fails (e.g. Groq token-cut
+          // mid-reply) doesn't display a half-answer and then error-out
+          // on the next capture.
+          const serverError = extractStreamError(evt);
+          if (serverError) {
+            // First-error-wins is more useful than last-error-wins: if
+            // multiple `{error:...}` events arrive (an unlikely edge
+            // case, but possible if the server retries or surfaces a
+            // chain of failures), the user sees the most-informative
+            // early cause rather than the most-recently-arrived one.
+            upstreamError ??= serverError;
+            // Don't break the loop — there may still be trailing deltas
+            // when an upstream provider emits a final chunk before
+            // closing. We surface the error message at the end.
+            continue;
+          }
           const delta = extractDelta(evt);
           if (delta == null) {
-            // Sentinel "[DONE]" or non-data event.
+            // Sentinel "[DONE]" or non-data event (heartbeat).
             continue;
           }
           cumulative += delta;
           seq.push(delta);
         }
       }
-      // Flush any multi-byte residue left in the decoder (and any
-      // trailing partial SSE event) so the last characters of the
-      // stream aren't silently dropped.
+      // Final SSE flush. Two distinct concerns MUST be handled:
+      //   1. The streaming TextDecoder holds back bytes that complete
+      //      multi-byte UTF-8 characters until the next read. Calling
+      //      `decoder.decode()` with no args flushes those bytes — but
+      //      the returned residue string must be pushed through SSE
+      //      first, otherwise a payload that splits a multi-byte
+      //      character across the boundary loses those bytes.
+      //   2. After that push, any unterminated event still sitting in
+      //      the SSE carry is surfaced via `drain()` so a missing
+      //      trailing `\n\n` (transport proxy / edge cache truncation)
+      //      doesn't drop the last chunk.
+      // The order matters: residue-push first, carry-drain second.
       const tail = decoder.decode();
-      if (tail) {
-        sse.push(tail).forEach((evt) => {
-          const d = extractDelta(evt);
-          if (d) {
-            cumulative += d;
-            seq.push(d);
-          }
-        });
+      if (tail) sse.push(tail);
+      const trailingEvents = sse.drain();
+      for (const evt of trailingEvents) {
+        const serverError = extractStreamError(evt);
+        if (serverError) {
+          upstreamError ??= serverError;
+          continue;
+        }
+        const d = extractDelta(evt);
+        if (d) {
+          cumulative += d;
+          seq.push(d);
+        }
       }
       // Drain any unsaid tail as a single final sentence.
       seq.finish();
@@ -354,12 +392,28 @@ export function useChartNarrator(
         return;
       }
 
+      // The server told us something went wrong upstream. Surface the
+      // exact message before checking the empty-reply path so the user
+      // doesn't see the misleading "returned an empty reply" string on
+      // top of a real upstream cause.
+      if (upstreamError) {
+        setError(`Narrator upstream error: ${upstreamError}`);
+        setStatus("error");
+        return;
+      }
+
       const trimmed =
         cumulative.length > 1500 ? `${cumulative.slice(0, 1497)}\u2026` : cumulative.trim();
       if (trimmed) {
         setLatestInsight(trimmed);
         onInsight?.(trimmed);
       } else {
+        // Zero deltas AND no server-emitted error event \u2014 typically means
+        // the server fell back to a friendly narration that still came
+        // through as a delta, OR a transport-level bug ate every chunk.
+        // If the server's fallback ran, the SSE stream should've emitted
+        // a delta event for it. If we land here, something downstream
+        // of the server (transport / parser) ate the original payload.
         setError("Narrator returned an empty reply");
         setStatus("error");
         return;

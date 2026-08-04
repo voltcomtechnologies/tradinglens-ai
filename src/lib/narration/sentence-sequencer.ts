@@ -119,7 +119,17 @@ export class SentenceSequencer {
 /** Lightweight accumulator for incremental SSE event payloads.
  *  OpenAI / OpenRouter / Groq all emit `data: <json>\n\n` chunks. The
  *  payload may arrive split across multiple TCP packets, so we maintain
- *  a `carry` and only flush complete events (terminated by `\n\n`). */
+ *  a `carry` and only flush complete events (terminated by `\n\n`).
+ *
+ *  Well-behaved servers emit a complete event before `controller.close()`
+ *  but transport proxies / edge functions / SSE-through-CDN can drop
+ *  the trailing `\n\n` boundary on the very last event, leaving a
+ *  partial event in the carry buffer. Call `drain()` at end-of-stream
+ *  to surface that partial event verbatim — the caller is then free to
+ *  treat it as a complete event. (For older SSE clients that strictly
+ *  require `\n\n` framing this means the last event might be lost
+ *  downstream; on the chart-narrator path we'd rather see a possibly
+ *  malformed final delta than silently drop it.) */
 export class SseLineStreamer {
   private carry = "";
 
@@ -140,12 +150,38 @@ export class SseLineStreamer {
     return this.carry.length > 0;
   }
 
+  /**
+   * Flush whatever's left in the carry buffer as a single event,
+   * regardless of whether the SSE boundary is present. Returns [] when
+   * the carry is empty.
+   *
+   * Use this at end-of-stream AFTER all `push()` calls so a missing
+   * trailing `\n\n` doesn't lose the last chunk.
+   */
+  drain(): string[] {
+    if (this.carry.length === 0) return [];
+    const event = this.carry;
+    this.carry = "";
+    return [event];
+  }
+
   reset(): void {
     this.carry = "";
   }
 }
 
-/** Extract the assistant content delta from an OpenAI-style SSE event. */
+/**
+ * Extract the assistant content delta from an OpenAI-style SSE event.
+ *
+ * Reads EITHER:
+ *   - upstream OpenAI/Grok/OpenRouter framing:
+ *       `data: {"choices":[{"delta":{"content":"..."}}]}`
+ *   - our route's `{delta}` wrapping on the narrator path:
+ *       `data: {"delta":"..."}`
+ *
+ * Returns null for the `[DONE]` sentinel, non-`data:` lines (heartbeats
+ * `event: ping`, comments `: keepalive`), or malformed JSON.
+ */
 export function extractDelta(event: string): string | null {
   if (!event.startsWith("data:")) return null;
   const data = event.slice(5).trim();
@@ -161,6 +197,42 @@ export function extractDelta(event: string): string | null {
       parsed.choices?.[0]?.delta?.content ??
       null
     );
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract an upstream-error string from the server's `{error: "..."}`
+ * framing. The narrator route emits one of these when ALL configured
+ * providers fail auth/availability/content-filter, OR when the streaming
+ * `for await` lands in the catch block. Previously this payload was
+ * silently discarded (`extractDelta` only reads `delta` / `choices`),
+ * which surfaced to the user as the unhelpful "Narrator returned an
+ * empty reply" string. Returning the actual error message lets the
+ * client show the user a real cause.
+ *
+ * Returns null for any non-error event. Returns the trimmed message
+ * string for both string payloads (`{"error":"..."}`) and nested
+ * objects (`{"error":{"code":"...","message":"..."}}`).
+ */
+export function extractStreamError(event: string): string | null {
+  if (!event.startsWith("data:")) return null;
+  const data = event.slice(5).trim();
+  if (!data || data === "[DONE]") return null;
+  try {
+    const parsed = JSON.parse(data) as {
+      // Upstream LLM SDKs nest their error bodies in different shapes:
+      error?: string | { message?: string; code?: string; type?: string };
+    };
+    const err = parsed.error;
+    if (err == null) return null;
+    if (typeof err === "string") return err.trim() || null;
+    if (typeof err === "object") {
+      const msg = err.message?.trim();
+      return msg || null;
+    }
+    return null;
   } catch {
     return null;
   }

@@ -12,6 +12,7 @@ import {
   NARRATOR_SYSTEM_PROMPT,
   buildNarratorUserMessage,
 } from "@/lib/llm/narrator-prompt";
+import { buildStaticNarratorFallback } from "@/lib/narration/static-fallback";
 
 /** Normalize any thrown value into a proper Error with message and stack */
 function toError(e: unknown): Error {
@@ -368,18 +369,51 @@ export async function POST(request: NextRequest) {
         const encoder = new TextEncoder();
         const stream = new ReadableStream<Uint8Array>({
           async start(controller) {
+            // Track whether the upstream emitted ANY non-empty delta. If
+            // it didn't (provider auth failed, content-filter ate the
+            // reply, model returned zero tokens, etc.) we fall back to
+            // a friendly narrated message so the client never reads
+            // "Narrator returned an empty reply" on a real upstream
+            // failure — the user hears a coherent short line instead of
+            // nothing.
+            let emittedAnyDelta = false;
             try {
         for await (const delta of chatCompletionStream(llmProvider, llmMessages, {
           temperature: 0.6,
           signal: request.signal,
         })) {
+                // Trim before counting so a provider that yields only
+                // whitespace / newline padding (some RLHF-tuned models
+                // pad SSE chunks with leading spaces) doesn't fool the
+                // fallback gate into thinking real content was emitted
+                // when the entire stream is structurally empty.
+                if (delta && delta.trim().length > 0) emittedAnyDelta = true;
                 if (request.signal.aborted) {
                   controller.close();
                   return;
                 }
+                // Always emit the delta (even empty strings) so the
+                // client's `extractDelta` sees a consistent stream, but
+                // only count non-empty ones toward the fallback gate.
                 controller.enqueue(
                   encoder.encode(
                     `data: ${JSON.stringify({ delta })}\n\n`,
+                  ),
+                );
+              }
+              if (!emittedAnyDelta) {
+                // Friendly fallback so the client never surfaces the
+                // generic "empty reply" string. The message is
+                // pair/timeframe-aware so it doesn't feel canned if
+                // the user happens to be watching a different chart
+                // than the last time.
+                const fallback = buildStaticNarratorFallback(
+                  resolvedPair,
+                  resolvedTimeframe,
+                );
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({ delta: fallback })}\n\n`,
                   ),
                 );
               }

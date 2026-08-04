@@ -3,6 +3,7 @@ import {
   SentenceSequencer,
   SseLineStreamer,
   extractDelta,
+  extractStreamError,
 } from "@/lib/narration/sentence-sequencer";
 
 describe("extractDelta", () => {
@@ -36,6 +37,61 @@ describe("SseLineStreamer", () => {
     expect(s.hasPending()).toBe(true);
     s.reset();
     expect(s.hasPending()).toBe(false);
+  });
+  it("drain() returns the leftover carry as a single event after end-of-stream", () => {
+    // Models the bug where the upstream SSE proxy truncates the
+    // final `\n\n` boundary; the event should still surface so the
+    // client reads the final chunk rather than dropping it.
+    const s = new SseLineStreamer();
+    s.push("data: {\"delta\":\"almost-done\"}");
+    expect(s.hasPending()).toBe(true);
+    expect(s.drain()).toEqual(["data: {\"delta\":\"almost-done\"}"]);
+    expect(s.hasPending()).toBe(false);
+  });
+  it("drain() returns [] when the carry is empty", () => {
+    const s = new SseLineStreamer();
+    expect(s.drain()).toEqual([]);
+  });
+  it("drain() is destructive — second call returns []", () => {
+    const s = new SseLineStreamer();
+    s.push("data: x");
+    s.drain();
+    expect(s.drain()).toEqual([]);
+  });
+});
+
+describe("extractStreamError", () => {
+  it("extracts a string {error:msg} payload verbatim", () => {
+    expect(extractStreamError(`data: {"error":"All LLM streaming providers failed: Groq: invalid api key"}`))
+      .toBe("All LLM streaming providers failed: Groq: invalid api key");
+  });
+  it("extracts .message from a nested-object error payload", () => {
+    // Some upstream SDKs surface an object body: `{error:{code,message,type}}`
+    const evt = `data: {"error":{"code":"rate_limit_exceeded","message":"You exceeded your current quota","type":"insufficient_quota"}}`;
+    expect(extractStreamError(evt)).toBe("You exceeded your current quota");
+  });
+  it("returns null for non-error payloads (delta / choices / [DONE])", () => {
+    expect(extractStreamError(`data: {"delta":"hello"}`)).toBeNull();
+    expect(
+      extractStreamError(`data: {"choices":[{"delta":{"content":"hello"}}]}`),
+    ).toBeNull();
+    expect(extractStreamError(`data: [DONE]`)).toBeNull();
+  });
+  it("returns null for non-`data:` lines (heartbeats / comments)", () => {
+    expect(extractStreamError(`event: ping`)).toBeNull();
+    expect(extractStreamError(`: keepalive`)).toBeNull();
+    expect(extractStreamError("")).toBeNull();
+  });
+  it("returns null for malformed JSON", () => {
+    expect(extractStreamError(`data: {not-json`)).toBeNull();
+  });
+  it("returns null for an empty-string error payload (defensive)", () => {
+    // Server might emit {"error":""} if a provider threw with no message;
+    // we don't want to surface a blank error string to the user.
+    expect(extractStreamError(`data: {"error":""}`)).toBeNull();
+  });
+  it("returns null when error object has no message field", () => {
+    expect(extractStreamError(`data: {"error":{"code":"x"}}`)).toBeNull();
   });
 });
 
