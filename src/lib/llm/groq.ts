@@ -11,10 +11,40 @@ import type {
   StreamingChatCompletionOptions,
   ChatCompletionStream,
 } from "./types";
+import { resolveModel } from "./helpers";
 
 const GROQ_BASE = "https://api.groq.com/openai/v1";
+
+// Text default. Groq's `llama-3.3-70b-versatile` is the most capable
+// general-purpose model on the free tier. Override via GROQ_MODEL.
+//
+// Vision default. Groq rejects multimodal arrays against text-only
+// models with `messages[i].content must be a string`, so requests that
+// contain an image MUST be routed here. Override via GROQ_VISION_MODEL.
+// `llama-3.2-90b-vision-preview` accepts the OpenAI-compatible
+// `image_url` content shape (same one we already build in
+// `buildUserMessage`).
 const DEFAULT_MODEL = "llama-3.3-70b-versatile";
+const VISION_MODEL = "llama-3.2-90b-vision-preview";
 const REQUEST_TIMEOUT = 60_000;
+
+/**
+ * Pick the right Groq model for these messages. Delegates to
+ * `resolveModel` for the priority order (see `helpers.ts`).
+ */
+export function resolveGroqModel(
+  messages: ChatMessage[],
+  options?: ChatCompletionOptions,
+): string {
+  return resolveModel(
+    "GROQ_MODEL",
+    "GROQ_VISION_MODEL",
+    DEFAULT_MODEL,
+    VISION_MODEL,
+    messages,
+    options,
+  );
+}
 
 export const groqClient: LLMClient = {
   name: "Groq",
@@ -37,7 +67,7 @@ export const groqClient: LLMClient = {
 
     try {
       const body = {
-        model: options?.model ?? process.env.GROQ_MODEL ?? DEFAULT_MODEL,
+        model: resolveGroqModel(messages, options),
         messages,
         temperature: options?.temperature ?? 0.7,
         max_tokens: options?.maxTokens ?? 2048,
@@ -108,7 +138,7 @@ export const groqClient: LLMClient = {
     }
 
     const body = {
-      model: options?.model ?? process.env.GROQ_MODEL ?? DEFAULT_MODEL,
+      model: resolveGroqModel(messages, options),
       messages,
       temperature: options?.temperature ?? 0.7,
       max_tokens: options?.maxTokens ?? 2048,

@@ -10,10 +10,40 @@ import type {
   StreamingChatCompletionOptions,
   ChatCompletionStream,
 } from "./types";
+import { resolveModel } from "./helpers";
 
 const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
+
+// Text default. `openai/gpt-4o-mini` is widely available on the free
+// tier and works for our scanner-style structured analysis. Override
+// via OPENROUTER_MODEL.
+//
+// Vision default. OpenRouter's free-tier multimodal offerings differ
+// per-slug; we pick `google/gemini-2.0-flash-exp:free` because it has
+// been a consistently-served free vision slug with a large context
+// window. Override via OPENROUTER_VISION_MODEL if you need a different
+// vision slug.
 const DEFAULT_MODEL = "openai/gpt-4o-mini";
+const VISION_MODEL = "google/gemini-2.0-flash-exp:free";
 const REQUEST_TIMEOUT = 90_000;
+
+/**
+ * Pick the right OpenRouter model for these messages. Delegates to
+ * `resolveModel` for the priority order (see `helpers.ts`).
+ */
+export function resolveOpenRouterModel(
+  messages: ChatMessage[],
+  options?: ChatCompletionOptions,
+): string {
+  return resolveModel(
+    "OPENROUTER_MODEL",
+    "OPENROUTER_VISION_MODEL",
+    DEFAULT_MODEL,
+    VISION_MODEL,
+    messages,
+    options,
+  );
+}
 
 export const openrouterClient: LLMClient = {
   name: "OpenRouter",
@@ -36,7 +66,7 @@ export const openrouterClient: LLMClient = {
 
     try {
       const body = {
-        model: options?.model ?? process.env.OPENROUTER_MODEL ?? DEFAULT_MODEL,
+        model: resolveOpenRouterModel(messages, options),
         messages,
         temperature: options?.temperature ?? 0.7,
         max_tokens: options?.maxTokens ?? 2048,
@@ -113,7 +143,7 @@ export const openrouterClient: LLMClient = {
     }
 
     const body = {
-      model: options?.model ?? process.env.OPENROUTER_MODEL ?? DEFAULT_MODEL,
+      model: resolveOpenRouterModel(messages, options),
       messages,
       temperature: options?.temperature ?? 0.7,
       max_tokens: options?.maxTokens ?? 2048,

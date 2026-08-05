@@ -1,4 +1,74 @@
-import type { ChatMessage, AnalysisType } from "./types";
+import type {
+  ChatMessage,
+  ChatCompletionOptions,
+  AnalysisType,
+  MessageContent,
+} from "./types";
+
+/**
+ * Detect multimodal (image-bearing) messages. Returns true if ANY of
+ * the messages has a content array containing an `image_url` part.
+ *
+ * Used by the Groq and OpenRouter providers to pick the right model —
+ * text-only models (e.g. `llama-3.3-70b-versatile`) reject arrays and
+ * return `messages[i].content must be a string` when given an image,
+ * so we MUST route multimodal requests to a vision-capable model.
+ *
+ * The `Array.isArray(c)` gate is load-bearing: it rules out
+ * string-content (which can contain the literal substring
+ * "image_url"). Inside the array, `TextContent` and `ImageContent`
+ * are typed object shapes — elements are never null — so we only
+ * need to guard against degenerate values like a stray string element
+ * slipping in via a malformed payload.
+ */
+export function messagesContainImage(messages: ChatMessage[]): boolean {
+  return messages.some((m) => {
+    const c = m.content as MessageContent;
+    if (!Array.isArray(c)) return false;
+    return c.some(
+      (part) =>
+        typeof part === "object" &&
+        (part as { type?: unknown }).type === "image_url",
+    );
+  });
+}
+
+/**
+ * Resolve the model slug for a provider given the messages and caller
+ * options. Used by Groq and OpenRouter so multimodal requests
+ * automatically route to a vision-capable slug and we get back
+ * meaningful narration instead of a "messages must be a string" 400
+ * from a text-only model.
+ *
+ * Priority order (highest first):
+ *   1. `options.model` — explicit per-call override (wins even on
+ *      multimodal so advanced callers can pin a specific model. If
+ *      they pick a text-only slug for an image, the upstream provider
+ *      will surface a clear 4xx — preferable to silently overriding
+ *      their intent.)
+ *   2. `env...(vision)` when the messages contain an image
+ *   3. `env...(text)` when they don't
+ *   4. Hard-coded `fallbackVision` / `fallbackText`
+ *
+ * Env vars are resolved with `||` (not `??`) so an explicitly-blank
+ * env var (`GROQ_VISION_MODEL=""` in a `.env`) falls back to the
+ * hard-coded slug instead of sending an empty `model:` field upstream.
+ */
+export function resolveModel(
+  envTextVar: string,
+  envVisionVar: string,
+  fallbackText: string,
+  fallbackVision: string,
+  messages: ChatMessage[],
+  options?: ChatCompletionOptions,
+): string {
+  if (options?.model) return options.model;
+  const wantsVision = messagesContainImage(messages);
+  const envValue = wantsVision
+    ? process.env[envVisionVar]
+    : process.env[envTextVar];
+  return envValue || (wantsVision ? fallbackVision : fallbackText);
+}
 
 export function buildUserMessage(
   textPrompt: string,
