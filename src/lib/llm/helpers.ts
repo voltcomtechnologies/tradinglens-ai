@@ -127,6 +127,151 @@ Important guidelines:
   return basePrompt + typeSpecific[analysisType];
 }
 
+/**
+ * Parse a "use this slug instead: <slug>" migration hint from an error
+ * message or a JSON error envelope returned by Groq / OpenRouter when
+ * a model has been deprecated or moved to a paid tier.
+ *
+ * Returns the suggested slug (e.g. "deepseek/deepseek-v3-flash") or
+ * null if no migration hint is found.
+ *
+ * Recognised message shapes (case-insensitive):
+ *   "...use this slug instead: <slug>"
+ *   "...use this model: <slug>"
+ *   "...use model <slug> instead"
+ *   "...use the model: <slug>"
+ *   "...please use <slug>"
+ *
+ * Robust to:
+ *   - JSON envelope (`{"error":{"message":"..."}}` or `{"message":"..."}`)
+ *     — we drill into the message field first, then regex against that.
+ *   - Both backtick and double-quote delimiters around the slug.
+ *   - Slugs containing `/`, `.`, `-`, `_` (the Groq / OpenRouter charset).
+ *
+ * NOT extracted:
+ *   - Things that look like slugs but aren't tied to a "use X" verb
+ *     (avoids false positives on embedded model names in error text).
+ *   - Plain URL paths that happen to contain `/` (the start-of-slug
+ *     requires alphanumeric, so a path like `/v1/chat` won't match).
+ */
+export function extractMigratedSlug(
+  errorTextOrMessage: string | null | undefined,
+): string | null {
+  if (!errorTextOrMessage) return null;
+  const text = String(errorTextOrMessage).trim();
+  if (!text) return null;
+
+  // If the caller handed us a full JSON error body, drill into the
+  // message field first so we match against the human-readable text
+  // instead of a JSON-escaped version of it.
+  if (text.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(text) as {
+        error?: { message?: string };
+        message?: string;
+      };
+      const inner = parsed.error?.message ?? parsed.message;
+      if (inner) {
+        const fromInner = extractMigratedSlug(inner);
+        if (fromInner) return fromInner;
+      }
+    } catch {
+      // Not JSON or malformed — fall through to regex on the raw text.
+    }
+  }
+
+  // Anchored to a "use(…) (…):" or "(…):<slug>" form so casual mentions
+  // of "model X" elsewhere in the error don't get pulled out.
+  // Two changes from the original regex:
+  //   1. The trailing `(?:this\s+slug\s+instead|...)` group is now OPTIONAL
+  //      so we match the bare "Please use X" form (no model/slug completer).
+  //   2. The slug char class now includes `:` because OpenRouter uses
+  //      `:free` and `:nitro` suffixes (e.g. `google/gemini-2.0-flash-exp:free`)
+  //      that we MUST preserve when forming the retry URL.
+  const match = text.match(
+    /(?:please\s+)?use\s+(?:this\s+slug\s+instead|this\s+model|the\s+model|the\s+slug|model|slug)?\s*[:\-]?\s*[`"']?([A-Za-z0-9][A-Za-z0-9._/:\\-]{0,127})[`"']?/i,
+  );
+  return match ? match[1] : null;
+}
+
+/**
+ * POST a chat-completions request and retry once with a migrated slug
+ * if the upstream suggests one in its error envelope.
+ *
+ * Why this exists: Groq and OpenRouter rotate free-tier slugs fairly
+ * often — e.g. OpenRouter recently moved `deepseek/deepseek-v4-flash`
+ * to paid-only, leaving Vercel deployments that pinned it via env var
+ * stuck. Rather than requiring operators to notice, edit a Vercel env
+ * var, and redeploy, the provider layer can self-heal: on the first
+ * !OK response, we parse the error for a "use this slug instead: X"
+ * hint and retry once with X.
+ *
+ * Crucially, the retry happens OFF THE BACK of the failed response —
+ * we discard the body and re-POST with the new model. This is cleaner
+ * than trying to replay the body (which is consumed by
+ * `response.text()`) and avoids any risk of the upstream half-handling
+ * the retry on a connection that was already in an error state.
+ *
+ * Capped at 1 retry to prevent infinite ping-pong (e.g. if the
+ * suggested slug is also unavailable and suggests another). The
+ * upper layer in `index.ts` will still surface the error to the
+ * next-provider fallback chain if this returns a failed Response.
+ *
+ * Boundaries this helper does NOT cover (deliberate):
+ *   - Mid-stream SSE errors are NOT retried. Once the response body
+ *     opens, partial deltas have already been yielded to the caller;
+ *     re-POSTing and streaming a fresh response would duplicate /
+ *     interleave content. Surfacing the error is the correct UX
+ *     because the upstream-fallback chain in `index.ts` then picks
+ *     up the next provider for the next request.
+ *   - Paid-only "use X instead" suggestions. If X is itself behind a
+ *     paywall (e.g. OpenRouter suggesting a paid-tier slug), the
+ *     retry will fail identically. The migration error message
+ *     preserved on the thrown error makes this case debuggable; the
+ *     next-provider chain (Groq) is the realistic recovery path
+ *     for those deployments.
+ */
+export async function fetchWithMigrationRetry(args: {
+  url: string;
+  headers: Record<string, string>;
+  body: Record<string, unknown>;
+  signal: AbortSignal | undefined;
+  providerName: string;
+}): Promise<Response> {
+  const initial = await fetch(args.url, {
+    method: "POST",
+    headers: args.headers,
+    body: JSON.stringify(args.body),
+    signal: args.signal,
+  });
+  if (initial.ok) return initial;
+
+  const errorText = await initial.text();
+  const migratedSlug = extractMigratedSlug(errorText);
+  if (!migratedSlug) {
+    throw new Error(
+      `${args.providerName} API error ${initial.status}: ${errorText.slice(0, 500)}`,
+    );
+  }
+
+  // Retry once with the suggested slug. We deliberately do NOT recurse
+  // here — a single retry is enough, and a second failure surfaces
+  // with full migration context for the operator (and for the
+  // next-provider fallback chain in `index.ts`).
+  const retryBody = { ...args.body, model: migratedSlug };
+  const retry = await fetch(args.url, {
+    method: "POST",
+    headers: args.headers,
+    body: JSON.stringify(retryBody),
+    signal: args.signal,
+  });
+  if (retry.ok) return retry;
+  const retryErrorText = await retry.text();
+  throw new Error(
+    `${args.providerName} API error ${initial.status} (model "${String(args.body.model)}" deprecated → suggested "${migratedSlug}") → retry ${retry.status}: ${retryErrorText.slice(0, 500)}`,
+  );
+}
+
 export function classifyAnalysisType(prompt: string): AnalysisType {
   const lower = prompt.toLowerCase();
   if (lower.includes("sentiment") || lower.includes("market feel")) return "sentiment";

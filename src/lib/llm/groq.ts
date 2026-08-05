@@ -11,7 +11,7 @@ import type {
   StreamingChatCompletionOptions,
   ChatCompletionStream,
 } from "./types";
-import { resolveModel } from "./helpers";
+import { resolveModel, fetchWithMigrationRetry } from "./helpers";
 
 const GROQ_BASE = "https://api.groq.com/openai/v1";
 
@@ -74,22 +74,20 @@ export const groqClient: LLMClient = {
         stream: false,
       };
 
-      const response = await fetch(`${GROQ_BASE}/chat/completions`, {
-        method: "POST",
+      // fetchWithMigrationRetry POSTs once and retries once if the
+      // upstream returns a "use this slug instead: X" migration hint.
+      // On OK returns the Response directly; on error throws with full
+      // migration context. We then parse + validate the JSON body.
+      const response = await fetchWithMigrationRetry({
+        url: `${GROQ_BASE}/chat/completions`,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify(body),
+        body,
         signal: controller.signal,
+        providerName: "Groq",
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `Groq API error ${response.status}: ${errorText.slice(0, 500)}`
-        );
-      }
 
       const data = (await response.json()) as {
         id: string;
@@ -145,22 +143,16 @@ export const groqClient: LLMClient = {
       stream: true,
     };
 
-    const response = await fetch(`${GROQ_BASE}/chat/completions`, {
-      method: "POST",
+    const response = await fetchWithMigrationRetry({
+      url: `${GROQ_BASE}/chat/completions`,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(body),
+      body,
       signal: effectiveSignal,
+      providerName: groqClient.name,
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Groq API error ${response.status}: ${errorText.slice(0, 500)}`,
-      );
-    }
     if (!response.body) {
       throw new Error("Groq returned an empty body for streaming");
     }

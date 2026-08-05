@@ -10,7 +10,7 @@ import type {
   StreamingChatCompletionOptions,
   ChatCompletionStream,
 } from "./types";
-import { resolveModel } from "./helpers";
+import { resolveModel, fetchWithMigrationRetry } from "./helpers";
 
 const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
 
@@ -73,24 +73,23 @@ export const openrouterClient: LLMClient = {
         stream: false,
       };
 
-      const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
-        method: "POST",
+      // See `groq.ts` for the rationale behind
+      // fetchWithMigrationRetry — exactly the same retry semantics
+      // apply here. OpenRouter is the most common source of these
+      // migration hints (the platform rotates free-tier slugs fairly
+      // often).
+      const response = await fetchWithMigrationRetry({
+        url: `${OPENROUTER_BASE}/chat/completions`,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
           "HTTP-Referer": process.env.APP_URL ?? "https://tradinglens-ai.vercel.app",
           "X-Title": "TradingLens AI",
         },
-        body: JSON.stringify(body),
+        body,
         signal: controller.signal,
+        providerName: "OpenRouter",
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(
-          `OpenRouter API error ${response.status}: ${errorText.slice(0, 500)}`
-        );
-      }
 
       const data = (await response.json()) as {
         id: string;
@@ -150,24 +149,18 @@ export const openrouterClient: LLMClient = {
       stream: true,
     };
 
-    const response = await fetch(`${OPENROUTER_BASE}/chat/completions`, {
-      method: "POST",
+    const response = await fetchWithMigrationRetry({
+      url: `${OPENROUTER_BASE}/chat/completions`,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
         "HTTP-Referer": process.env.APP_URL ?? "https://tradinglens-ai.vercel.app",
         "X-Title": "TradingLens AI",
       },
-      body: JSON.stringify(body),
+      body,
       signal: effectiveSignal,
+      providerName: openrouterClient.name,
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `OpenRouter API error ${response.status}: ${errorText.slice(0, 500)}`,
-      );
-    }
     if (!response.body) {
       throw new Error("OpenRouter returned an empty body for streaming");
     }
