@@ -1,4 +1,4 @@
-export type LLMProvider = "openrouter" | "groq" | "auto";
+export type LLMProvider = "openrouter" | "groq" | "xai" | "auto";
 
 export type AnalysisType = "analyze" | "sentiment" | "levels" | "opportunities";
 

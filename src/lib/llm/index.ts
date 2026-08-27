@@ -7,10 +7,12 @@ import type {
 } from "./types";
 import { groqClient } from "./groq";
 import { openrouterClient } from "./openrouter";
+import { xaiClient } from "./xai";
 
 export * from "./types";
 export { groqClient } from "./groq";
 export { openrouterClient } from "./openrouter";
+export { xaiClient } from "./xai";
 export {
   buildUserMessage,
   buildTradingSystemPrompt,
@@ -20,6 +22,7 @@ export {
 const clients = {
   openrouter: openrouterClient,
   groq: groqClient,
+  xai: xaiClient,
 };
 
 /**
@@ -29,8 +32,8 @@ const clients = {
  */
 export function getProvider(preference: LLMProvider = "auto"): typeof openrouterClient {
   const order: LLMProvider[] = preference === "auto"
-    ? ["groq", "openrouter"]
-    : [preference, "groq", "openrouter"];
+    ? ["xai", "groq", "openrouter"]
+    : [preference, "xai", "groq", "openrouter"];
 
   for (const key of order) {
     if (key === "auto") continue;
@@ -41,7 +44,7 @@ export function getProvider(preference: LLMProvider = "auto"): typeof openrouter
   }
 
   throw new Error(
-    "No LLM provider is available. Please set GROQ_API_KEY or OPENROUTER_API_KEY in your environment variables."
+    "No LLM provider is available. Please set XAI_API_KEY, GROQ_API_KEY, or OPENROUTER_API_KEY in your environment variables."
   );
 }
 
@@ -55,8 +58,8 @@ export async function chatCompletion(
   options?: ChatCompletionOptions
 ): Promise<{ content: string; providerName: string }> {
   const order: LLMProvider[] = preference === "auto"
-    ? ["groq", "openrouter"]
-    : [preference, "groq", "openrouter"];
+    ? ["xai", "groq", "openrouter"]
+    : [preference, "xai", "groq", "openrouter"];
 
   const errors: string[] = [];
 
@@ -97,8 +100,8 @@ export async function* chatCompletionStream(
   options?: StreamingChatCompletionOptions,
 ): AsyncGenerator<string, void, void> {
   const order: LLMProvider[] = preference === "auto"
-    ? ["groq", "openrouter"]
-    : [preference, "groq", "openrouter"];
+    ? ["xai", "groq", "openrouter"]
+    : [preference, "xai", "groq", "openrouter"];
 
   const errors: string[] = [];
   for (const key of order) {
@@ -125,7 +128,7 @@ export async function* chatCompletionStream(
 
   if (errors.length === 0) {
     throw new Error(
-      "No LLM streaming provider is available. Set GROQ_API_KEY or OPENROUTER_API_KEY.",
+      "No LLM streaming provider is available. Set XAI_API_KEY, GROQ_API_KEY, or OPENROUTER_API_KEY.",
     );
   }
   throw new Error(`All LLM streaming providers failed:\n${errors.join("\n")}`);

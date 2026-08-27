@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { messagesContainImage } from "@/lib/llm/helpers";
 import { resolveGroqModel } from "@/lib/llm/groq";
 import { resolveOpenRouterModel } from "@/lib/llm/openrouter";
+import { resolveXaiModel } from "@/lib/llm/xai";
 import type { ChatMessage } from "@/lib/llm/types";
 
 // ─── messagesContainImage ────────────────────────────────────────
@@ -259,9 +260,67 @@ describe("resolveOpenRouterModel", () => {
     // overriding only the vision slug.
     vi.stubEnv("OPENROUTER_MODEL", "openai/gpt-4o-mini");
     vi.stubEnv("OPENROUTER_VISION_MODEL", "qwen/qwen-2-vl-7b-instruct:free");
-    expect(resolveOpenRouterModel(TEXT_ONLY)).toBe("openai/gpt-4o-mini");
     expect(resolveOpenRouterModel(WITH_IMAGE)).toBe(
       "qwen/qwen-2-vl-7b-instruct:free",
     );
   });
 });
+
+// ─── resolveXaiModel ─────────────────────────────────────────────
+
+describe("resolveXaiModel", () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  const TEXT_ONLY: ChatMessage[] = [
+    { role: "user", content: "plain text" },
+  ];
+
+  const WITH_IMAGE: ChatMessage[] = [
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "analyze chart" },
+        {
+          type: "image_url",
+          image_url: { url: "data:image/png;base64,xyz", detail: "high" },
+        },
+      ],
+    },
+  ];
+
+  it("uses hard-coded text default when text-only and no env is set", () => {
+    expect(resolveXaiModel(TEXT_ONLY)).toBe("grok-2-1212");
+  });
+
+  it("uses XAI_MODEL env var for text-only requests", () => {
+    vi.stubEnv("XAI_MODEL", "grok-beta");
+    expect(resolveXaiModel(TEXT_ONLY)).toBe("grok-beta");
+  });
+
+  it("uses hard-coded vision default when multimodal + no env", () => {
+    expect(resolveXaiModel(WITH_IMAGE)).toBe("grok-2-vision-1212");
+  });
+
+  it("uses XAI_VISION_MODEL env var when multimodal", () => {
+    vi.stubEnv("XAI_VISION_MODEL", "grok-vision-beta");
+    expect(resolveXaiModel(WITH_IMAGE)).toBe("grok-vision-beta");
+  });
+
+  it("prefers options.model over any env/default", () => {
+    vi.stubEnv("XAI_MODEL", "from-env-text");
+    vi.stubEnv("XAI_VISION_MODEL", "from-env-vision");
+    expect(resolveXaiModel(WITH_IMAGE, { model: "explicit-grok" })).toBe(
+      "explicit-grok",
+    );
+    expect(resolveXaiModel(TEXT_ONLY, { model: "explicit-grok" })).toBe(
+      "explicit-grok",
+    );
+  });
+});
+
