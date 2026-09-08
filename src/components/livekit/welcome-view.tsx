@@ -69,7 +69,7 @@ export function WelcomeView({
             <div>
               <p className="font-semibold mb-1">LiveKit Credentials Pending</p>
               <p className="text-amber-300/80">
-                To connect to a live voice agent, please add <code className="bg-black/30 px-1 py-0.5 rounded text-amber-200">LIVEKIT_API_KEY</code>, <code className="bg-black/30 px-1 py-0.5 rounded text-amber-200">LIVEKIT_API_SECRET</code>, and <code className="bg-black/30 px-1 py-0.5 rounded text-amber-200">NEXT_PUBLIC_LIVEKIT_URL</code> to your environment variables on Vercel.
+                To connect to a live voice agent, please add <code className="bg-black/30 px-1 py-0.5 rounded text-amber-200">LIVEKIT_API_KEY</code>, <code className="bg-black/30 px-1 py-0.5 rounded text-amber-200">LIVEKIT_API_SECRET</code>, and <code className="bg-black/30 px-1 py-0.5 rounded text-amber-200">LIVEKIT_URL</code> to your environment variables on Vercel.
               </p>
             </div>
           </div>
