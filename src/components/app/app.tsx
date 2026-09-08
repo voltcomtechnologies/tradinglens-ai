@@ -32,7 +32,7 @@ export function App({ agentName }: AppProps) {
   return (
     <AgentSessionProvider session={session}>
       <AppSetup />
-      <main className="grid h-svh grid-cols-1 place-content-center">
+      <main className="grid h-[calc(100vh-5rem)] max-h-screen grid-cols-1 place-content-center overflow-hidden">
         <ViewController />
       </main>
       <StartAudioButton label="Start Audio" />

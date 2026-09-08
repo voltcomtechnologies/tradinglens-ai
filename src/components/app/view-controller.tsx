@@ -45,7 +45,7 @@ export function ViewController() {
           supportsScreenShare={true}
           isPreConnectBufferEnabled={true}
           themeMode={resolvedTheme === 'dark' ? 'dark' : 'light'}
-          className="fixed inset-0"
+          className="relative w-full h-full max-h-screen overflow-hidden"
         />
       )}
     </AnimatePresence>
