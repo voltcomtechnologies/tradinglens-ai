@@ -41,10 +41,16 @@ export function ChatTranscript() {
           <AnimatePresence initial={false}>
             {/* Livekit Transcriptions */}
             {transcriptions.map((t, idx) => {
-              const isAgent = t.participant?.isAgent ?? true;
+              const item = t as unknown as {
+                id?: string;
+                text?: string;
+                participant?: { isAgent?: boolean };
+                streamInfo?: { participant?: { isAgent?: boolean } };
+              };
+              const isAgent = item.participant?.isAgent ?? item.streamInfo?.participant?.isAgent ?? true;
               return (
                 <motion.div
-                  key={`transcription-${t.id || idx}`}
+                  key={`transcription-${item.id || idx}`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className={`flex gap-3 text-xs ${isAgent ? "items-start" : "items-start flex-row-reverse"}`}
@@ -68,7 +74,7 @@ export function ChatTranscript() {
                     <p className="font-semibold text-[10px] opacity-70 mb-0.5">
                       {isAgent ? "TradingLens Voice Agent" : "You"}
                     </p>
-                    <p className="leading-relaxed">{t.text}</p>
+                    <p className="leading-relaxed">{item.text}</p>
                   </div>
                 </motion.div>
               );
