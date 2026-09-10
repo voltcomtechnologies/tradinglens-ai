@@ -10,6 +10,7 @@ import { ViewController } from '@/components/app/view-controller';
 import { Toaster } from '@/components/ui/sonner';
 import { useAgentErrors } from '@/hooks/useAgentErrors';
 import { useDebugMode } from '@/hooks/useDebug';
+import { cn } from '@/lib/utils';
 
 const IN_DEVELOPMENT = process.env.NODE_ENV !== 'production';
 
@@ -20,11 +21,13 @@ function AppSetup() {
   return null;
 }
 
+
 interface AppProps {
   agentName?: string;
+  className?: string;
 }
 
-export function App({ agentName = 'Casey-367' }: AppProps) {
+export function App({ agentName = 'Casey-367', className }: AppProps) {
   const tokenSource = useMemo(() => TokenSource.endpoint('/api/token'), []);
 
   const session = useSession(tokenSource, agentName ? { agentName } : undefined);
@@ -32,7 +35,7 @@ export function App({ agentName = 'Casey-367' }: AppProps) {
   return (
     <AgentSessionProvider session={session}>
       <AppSetup />
-      <main className="grid h-[calc(100vh-5rem)] max-h-screen grid-cols-1 place-content-center overflow-hidden">
+      <main className={cn("grid h-[calc(100vh-8rem)] w-full grid-cols-1 place-content-center overflow-hidden", className)}>
         <ViewController />
       </main>
       <StartAudioButton label="Start Audio" />
