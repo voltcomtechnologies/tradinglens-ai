@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { type MotionProps, motion } from 'motion/react';
-import { useVoiceAssistant } from '@livekit/components-react';
+import { useVoiceAssistant, useTracks } from '@livekit/components-react';
+import { Track } from 'livekit-client';
 import { AgentAudioVisualizerAura } from '@/components/agents-ui/agent-audio-visualizer-aura';
 import { AgentAudioVisualizerBar } from '@/components/agents-ui/agent-audio-visualizer-bar';
 import { AgentAudioVisualizerGrid } from '@/components/agents-ui/agent-audio-visualizer-grid';
@@ -35,7 +36,7 @@ export function AudioVisualizer({
   themeMode,
   isChatOpen,
   audioVisualizerType = 'bar',
-  audioVisualizerColor,
+  audioVisualizerColor = '#10b981',
   audioVisualizerColorShift = 0.3,
   audioVisualizerBarCount = 5,
   audioVisualizerRadialRadius = 100,
@@ -46,7 +47,17 @@ export function AudioVisualizer({
   className,
   ...props
 }: AudioVisualizerProps) {
-  const { state, audioTrack } = useVoiceAssistant();
+  const { state: vaState, audioTrack: vaAudioTrack } = useVoiceAssistant();
+
+  const remoteMicrophoneTracks = useTracks([Track.Source.Microphone], { onlySubscribed: true });
+  const fallbackRemoteTrack = remoteMicrophoneTracks.find((t) => t.participant.isLocal === false);
+  const audioTrack = vaAudioTrack || fallbackRemoteTrack;
+
+  const isAudioSpeaking = audioTrack?.publication?.isMuted === false;
+  const state = vaState !== 'disconnected' && vaState !== 'connecting'
+    ? vaState
+    : (fallbackRemoteTrack ? (isAudioSpeaking ? 'speaking' : 'listening') : vaState);
+
 
   switch (audioVisualizerType) {
     case 'aura': {

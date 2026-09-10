@@ -44,10 +44,13 @@ export function ViewController() {
           supportsVideoInput={true}
           supportsScreenShare={true}
           isPreConnectBufferEnabled={true}
+          audioVisualizerType="aura"
+          audioVisualizerColor="#10b981"
           themeMode={resolvedTheme === 'dark' ? 'dark' : 'light'}
           className="relative w-full h-full max-h-screen overflow-hidden"
         />
       )}
+
     </AnimatePresence>
   );
 }
