@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { AccessToken, RoomConfiguration, type AccessTokenOptions, type VideoGrant } from 'livekit-server-sdk';
+import { AccessToken, RoomConfiguration, RoomAgentDispatch, type AccessTokenOptions, type VideoGrant } from 'livekit-server-sdk';
 
 type ConnectionDetails = {
   serverUrl: string;
@@ -15,6 +15,7 @@ export async function POST(req: Request) {
   const API_KEY = process.env.LIVEKIT_API_KEY;
   const API_SECRET = process.env.LIVEKIT_API_SECRET;
   const LIVEKIT_URL = process.env.LIVEKIT_URL || process.env.NEXT_PUBLIC_LIVEKIT_URL;
+  const AGENT_NAME = process.env.LIVEKIT_AGENT_NAME || 'Casey-367';
 
   try {
     if (!LIVEKIT_URL) {
@@ -32,6 +33,15 @@ export async function POST(req: Request) {
     const roomConfig = body?.room_config
       ? RoomConfiguration.fromJson(body.room_config, { ignoreUnknownFields: true })
       : new RoomConfiguration();
+
+    // Ensure agent dispatch for Casey-367 if not explicitly configured in request
+    if ((!roomConfig.agents || roomConfig.agents.length === 0) && AGENT_NAME) {
+      roomConfig.agents = [
+        new RoomAgentDispatch({
+          agentName: AGENT_NAME,
+        }),
+      ];
+    }
 
     // Generate participant token
     const participantName = 'user';

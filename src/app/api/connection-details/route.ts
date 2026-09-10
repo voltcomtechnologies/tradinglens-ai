@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { AccessToken } from "livekit-server-sdk";
+import { AccessToken, RoomConfiguration, RoomAgentDispatch } from "livekit-server-sdk";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     const roomName = body.roomName || `trading-lens-${Math.random().toString(36).substring(2, 7)}`;
     const participantName = body.participantName || `Trader_${Math.random().toString(36).substring(2, 6)}`;
+    const agentName = body.agentName || process.env.LIVEKIT_AGENT_NAME || "Casey-367";
 
     const apiKey = process.env.LIVEKIT_API_KEY;
     const apiSecret = process.env.LIVEKIT_API_SECRET;
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
       metadata: JSON.stringify({
         role: "user",
         agentPersona: "TradingLens AI Voice Trader",
+        agentName,
       }),
     });
 
@@ -43,12 +45,24 @@ export async function POST(req: Request) {
       canPublishData: true,
     });
 
+    if (agentName) {
+      const roomConfig = new RoomConfiguration({
+        agents: [
+          new RoomAgentDispatch({
+            agentName,
+          }),
+        ],
+      });
+      at.roomConfig = roomConfig;
+    }
+
     const token = await at.toJwt();
 
     return NextResponse.json({
       serverUrl: wsUrl,
       participantToken: token,
       roomName,
+      agentName,
       isConfigured: true,
     });
   } catch (error) {

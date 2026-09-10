@@ -24,7 +24,7 @@ interface AppProps {
   agentName?: string;
 }
 
-export function App({ agentName }: AppProps) {
+export function App({ agentName = process.env.NEXT_PUBLIC_LIVEKIT_AGENT_NAME || 'Casey-367' }: AppProps) {
   const tokenSource = useMemo(() => TokenSource.endpoint('/api/token'), []);
 
   const session = useSession(tokenSource, agentName ? { agentName } : undefined);
