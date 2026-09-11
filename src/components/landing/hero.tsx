@@ -12,6 +12,7 @@ import {
   Zap,
   Play,
 } from "lucide-react";
+import { ParticleBackground } from "./particle-background";
 
 /* ------------------------------------------------------------------ */
 /*  Animated candlestick chart canvas                                  */
@@ -267,15 +268,24 @@ export function HeroSection() {
       ref={ref}
       className="relative min-h-[100svh] overflow-hidden flex items-center"
     >
-      {/* ---- Background layers ---- */}
+      {/* ---- Background layers (all z-0, all pointer-events-none) ---- */}
       <motion.div style={{ y: bgY }} className="absolute inset-0 pointer-events-none">
         {/* Grid */}
         <div className="absolute inset-0 bg-grid mask-fade-y opacity-70" />
-        {/* Aurora glows */}
-        <div className="absolute -top-40 left-1/4 w-[700px] h-[700px] rounded-full bg-primary/15 blur-[140px] animate-aurora" />
-        <div className="absolute top-1/3 -right-40 w-[600px] h-[600px] rounded-full bg-accent/10 blur-[140px] animate-aurora [animation-delay:-6s]" />
-        <div className="absolute bottom-0 -left-40 w-[500px] h-[500px] rounded-full bg-chart-5/10 blur-[140px] animate-aurora [animation-delay:-10s]" />
-        {/* Radial vignette */}
+
+        {/* Interactive particle field: mesh-gradient aura + floating geometry.
+            Owns its own canvas, cursor physics and reduced-motion handling.
+            Tune density / colours / speed via the `config` prop. */}
+        <ParticleBackground />
+
+        {/* Legibility scrim — dims the busiest part of the field behind the
+            copy so the headline and CTAs stay crisp. Deliberately a gradient
+            rather than backdrop-filter: a full-size backdrop blur would have
+            to re-sample the animating canvas every frame. The small badges and
+            the secondary CTA still use real glassmorphism. */}
+        <div className="absolute inset-0 bg-[radial-gradient(85%_75%_at_20%_45%,rgba(7,6,5,0.88)_0%,rgba(7,6,5,0.5)_42%,transparent_75%)] lg:bg-[radial-gradient(62%_95%_at_16%_48%,rgba(7,6,5,0.82)_0%,rgba(7,6,5,0.38)_50%,transparent_78%)]" />
+
+        {/* Radial vignette — also reads as background depth-of-field */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,#070605_85%)]" />
       </motion.div>
 
@@ -349,7 +359,7 @@ export function HeroSection() {
                 </Link>
                 <Link
                   href="/lens/chart"
-                  className="group inline-flex items-center gap-3 px-7 py-4 rounded-2xl border border-border/80 hover:border-primary/50 hover:bg-primary/5 transition-all backdrop-blur-sm"
+                  className="group inline-flex items-center gap-3 px-7 py-4 rounded-2xl border border-border/80 hover:border-primary/50 hover:bg-primary/5 transition-all bg-background/25 backdrop-blur-md"
                 >
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 border border-primary/30 group-hover:scale-110 transition-transform">
                     <Play className="h-3.5 w-3.5 text-primary fill-primary" />

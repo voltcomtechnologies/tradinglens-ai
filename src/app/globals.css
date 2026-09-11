@@ -374,4 +374,10 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+
+  /* Hero mesh-gradient aura: freeze in place instead of snapping to the
+     end keyframe. The canvas particle field stops itself via matchMedia. */
+  .animate-aurora {
+    animation: none !important;
+  }
 }
