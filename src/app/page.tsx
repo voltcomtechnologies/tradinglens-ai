@@ -16,15 +16,13 @@ export default async function HomePage() {
   const session = await auth();
 
   return (
-    <div className="relative min-h-screen bg-background overflow-x-clip">
+    <div className="relative min-h-screen bg-background overflow-x-clip pb-11">
+      {/* Fixed broadcast ticker pinned to the bottom of the viewport */}
+      <ForexTicker />
+
       <Navbar user={session?.user} />
 
       <main className="relative">
-        {/* Live price ticker at top */}
-        <div className="pt-24">
-          <ForexTicker />
-        </div>
-
         <HeroSection />
         <StatsBand />
         <FeaturesSection />
