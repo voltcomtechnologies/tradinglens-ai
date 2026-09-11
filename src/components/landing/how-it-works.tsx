@@ -1,93 +1,160 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Upload, Brain, TrendingUp, GraduationCap } from "lucide-react";
+import { useRef, useCallback } from "react";
+import {
+  motion,
+  useMotionValue,
+  useSpring,
+  useMotionTemplate,
+} from "framer-motion";
+import {
+  Brain,
+  Layers,
+  BookOpen,
+  ChartCandlestick,
+  Award,
+  Crosshair,
+  Headphones,
+} from "lucide-react";
 import { ScrollReveal } from "./scroll-reveal";
+import { cn } from "@/lib/utils";
 
-const steps = [
-  {
-    icon: Upload,
-    title: "Upload or Share",
-    description:
-      "Snap a chart photo, upload an image, or let the AI view your screen for instant analysis.",
-  },
+/* Card with cursor-follow spotlight */
+function SpotlightCard({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const mx = useMotionValue(0);
+  const my = useMotionValue(0);
+  const sx = useSpring(mx, { stiffness: 260, damping: 26 });
+  const sy = useSpring(my, { stiffness: 260, damping: 26 });
+  const spotlight = useMotionTemplate`radial-gradient(360px circle at ${sx}px ${sy}px, rgba(255,107,0,0.10), transparent 65%)`;
+
+  const onMove = useCallback(
+    (e: React.MouseEvent) => {
+      const rect = ref.current?.getBoundingClientRect();
+      if (!rect) return;
+      mx.set(e.clientX - rect.left);
+      my.set(e.clientY - rect.top);
+    },
+    [mx, my]
+  );
+
+  return (
+    <motion.div
+      ref={ref}
+      onMouseMove={onMove}
+      whileHover={{ y: -4 }}
+      className={cn(
+        "group relative overflow-hidden rounded-3xl border border-border/60 bg-card/40 backdrop-blur-sm p-6 sm:p-7 transition-colors hover:border-primary/30",
+        className
+      )}
+    >
+      {/* cursor spotlight */}
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute -inset-px opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+        style={{ background: spotlight }}
+      />
+      {children}
+    </motion.div>
+  );
+}
+
+const highlights = [
   {
     icon: Brain,
-    title: "AI Analyzes",
+    title: "AI-Powered Market Analysis",
     description:
-      "Our AI engine processes technical indicators, price action, and market sentiment in seconds.",
+      "Get real-time, data-driven insights powered by advanced AI. Analyze price action, identify trends, and make smarter trading decisions without guesswork.",
+    span: "lg:col-span-2",
   },
   {
-    icon: TrendingUp,
-    title: "Get Insights",
+    icon: Layers,
+    title: "All-in-One Trading Platform",
     description:
-      "Receive detailed analysis with trade signals, entry points, stop-losses, and risk management.",
+      "Analysis, live charts, and education in one place — engineered so every tool feeds the next.",
+    span: "",
   },
   {
-    icon: GraduationCap,
-    title: "Learn & Grow",
+    icon: BookOpen,
+    title: "Structured Trading Education",
     description:
-      "Access AI-tutored courses, track progress, and build your trading expertise over time.",
+      "Master the financial markets with step-by-step learning. From beginner to advanced, EduLens simplifies complex concepts to build real trading confidence.",
+    span: "",
+  },
+  {
+    icon: ChartCandlestick,
+    title: "Real-Time Chart Intelligence",
+    description:
+      "Track live market movements with precision. ChartLens delivers clear, actionable insights to help you understand price behavior as it happens.",
+    span: "",
+  },
+  {
+    icon: Award,
+    title: "Built on 15+ Years Expertise",
+    description:
+      "Powered by Global Gate Management's trading experience. Our AI is trained on real market data, strategies, and years of practical trading knowledge.",
+    span: "lg:col-span-2",
+  },
+  {
+    icon: Crosshair,
+    title: "No Guesswork, Just Clarity",
+    description:
+      "Eliminate emotional trading and confusion. Make decisions based on structured insights, not hype or noise.",
+    span: "",
+  },
+  {
+    icon: Headphones,
+    title: "24/7 Support",
+    description:
+      "Ask your questions to real experts — anytime, day or night.",
+    span: "lg:col-span-2",
   },
 ];
 
 export function HowItWorks() {
   return (
-    <section className="relative py-24 sm:py-32 border-t border-border/50 overflow-hidden">
-      {/* Background glow */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
+    <section className="relative py-28 sm:py-36 overflow-hidden">
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/[0.05] rounded-full blur-[130px] pointer-events-none" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <ScrollReveal className="text-center mb-16">
+        <ScrollReveal className="text-center mb-16 sm:mb-20">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            Simple Process
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+            Key Highlights
           </div>
-          <h2 className="text-4xl sm:text-5xl font-bold mb-5 tracking-tight">
-            How It <span className="gradient-text glow-text-subtle">Works</span>
+          <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold mb-5 tracking-tight">
+            Reasons for{" "}
+            <span className="gradient-text glow-text-subtle">choosing us</span>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            From chart upload to profitable trades in four simple steps
+            Everything is designed to replace guesswork with clarity — powered
+            by AI and 15+ years of real trading expertise.
           </p>
         </ScrollReveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {steps.map((step, i) => (
-            <ScrollReveal key={step.title} delay={i * 0.15}>
-              <motion.div
-                whileHover={{ y: -5 }}
-                className="relative text-center group"
-              >
-                <div className="relative inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-accent mb-5 shadow-lg shadow-primary/20 group-hover:shadow-primary/40 transition-shadow">
-                  <step.icon className="h-8 w-8 text-white" />
-                  <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-card border-2 border-primary flex items-center justify-center text-xs font-bold text-primary">
-                    {i + 1}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {highlights.map((item, i) => (
+            <ScrollReveal key={item.title} delay={i * 0.08} className={item.span}>
+              <SpotlightCard className="h-full">
+                <div className="relative">
+                  <div className="inline-flex p-3 rounded-2xl bg-primary/10 border border-primary/25 mb-5 group-hover:scale-110 transition-transform duration-500">
+                    <item.icon className="h-6 w-6 text-primary" />
                   </div>
+                  <h3 className="font-display text-lg font-semibold mb-2 group-hover:text-primary transition-colors">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {item.description}
+                  </p>
                 </div>
-                <h3 className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors">
-                  {step.title}
-                </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {step.description}
-                </p>
-
-                {/* Connector line */}
-                {i < steps.length - 1 && (
-                  <div className="hidden lg:block absolute top-10 left-[calc(50%+40px)] w-[calc(100%-80px)]">
-                    <div className="h-px bg-gradient-to-r from-primary/40 via-primary/20 to-transparent" />
-                    <motion.div
-                      animate={{ x: ["-100%", "100%"] }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        repeatDelay: 1,
-                        ease: "linear",
-                      }}
-                      className="absolute top-0 left-0 w-1/3 h-px bg-gradient-to-r from-transparent via-primary to-transparent"
-                    />
-                  </div>
-                )}
-              </motion.div>
+                <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              </SpotlightCard>
             </ScrollReveal>
           ))}
         </div>

@@ -1,133 +1,137 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-  Brain,
-  BarChart3,
-  BookOpen,
-  Globe,
-  Shield,
-  TrendingUp,
-} from "lucide-react";
+import Link from "next/link";
+import { Brain, ChartCandlestick, BookOpen, ArrowUpRight } from "lucide-react";
 import { ScrollReveal } from "./scroll-reveal";
 
-const features = [
+const lenses = [
   {
+    number: "01",
     icon: Brain,
-    title: "Trading Lens",
+    name: "TraderLens",
+    tagline: "Your AI trading co-pilot",
     description:
-      "Upload charts or share your screen for real-time AI analysis. Get instant trade signals, entry points, and risk management advice.",
-    color: "from-orange-500 to-amber-500",
-    glow: "shadow-orange-500/20",
-    stat: "Real-time",
+      "TraderLens simplifies trading, forex analysis, and stock market insights using real-time AI-powered chart breakdowns.",
+    points: ["Real-time chart breakdowns", "Trade signals with reasoning", "Forex & stock insights"],
+    href: "/lens/trading",
+    hue: "from-orange-500/25 via-primary/10 to-transparent",
+    iconColor: "text-primary",
+    iconBg: "bg-primary/15 border-primary/30",
   },
   {
-    icon: BarChart3,
-    title: "Chart Lens",
+    number: "02",
+    icon: ChartCandlestick,
+    name: "ChartLens",
+    tagline: "Live chart intelligence",
     description:
-      "AI continuously analyzes major currency pairs with Bloomberg-level commentary. Watch automated technical and fundamental analysis.",
-    color: "from-amber-500 to-yellow-500",
-    glow: "shadow-amber-500/20",
-    stat: "24/7",
+      "ChartLens helps you analyze live trading charts, interpret price action, and apply AI-powered market analysis to make informed trading decisions with confidence.",
+    points: ["Live expert chart sessions", "Price action interpretation", "Entry & exit zone breakdowns"],
+    href: "/lens/chart",
+    hue: "from-amber-400/25 via-accent/10 to-transparent",
+    iconColor: "text-accent",
+    iconBg: "bg-accent/15 border-accent/30",
   },
   {
+    number: "03",
     icon: BookOpen,
-    title: "Edu Lens",
+    name: "EduLens",
+    tagline: "Structured trading education",
     description:
-      "AI-powered learning platform with PDF curriculum. Get personalized tutoring, interactive quizzes, and progress tracking.",
-    color: "from-orange-600 to-red-500",
-    glow: "shadow-orange-600/20",
-    stat: "Interactive",
-  },
-  {
-    icon: Globe,
-    title: "Multi-Currency",
-    description:
-      "Pay in NGN, USD, EUR, or GBP. Integrated with Paystack and Flutterwave for seamless global transactions.",
-    color: "from-yellow-500 to-orange-400",
-    glow: "shadow-yellow-500/20",
-    stat: "4 Currencies",
-  },
-  {
-    icon: Shield,
-    title: "Bank-Level Security",
-    description:
-      "Enterprise-grade encryption, secure payment processing, and GDPR-compliant data handling protect your information.",
-    color: "from-red-500 to-orange-500",
-    glow: "shadow-red-500/20",
-    stat: "256-bit",
-  },
-  {
-    icon: TrendingUp,
-    title: "Trading Journal",
-    description:
-      "Track every trade with AI-powered insights. Analyze your performance, identify patterns, and improve your win rate.",
-    color: "from-amber-600 to-orange-500",
-    glow: "shadow-amber-600/20",
-    stat: "Analytics",
+      "EduLens is a structured financial market training designed to help you understand market fundamentals, price action, risk management, and disciplined trading strategies.",
+    points: ["Market fundamentals to advanced", "Risk management mastery", "Disciplined strategy building"],
+    href: "/lens/edu",
+    hue: "from-rose-500/20 via-chart-5/10 to-transparent",
+    iconColor: "text-chart-5",
+    iconBg: "bg-chart-5/15 border-chart-5/30",
   },
 ];
 
 export function FeaturesSection() {
   return (
-    <section className="relative py-24 sm:py-32 overflow-hidden">
+    <section className="relative py-28 sm:py-36 overflow-hidden">
       {/* Background glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-primary/[0.06] rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute inset-0 bg-dots mask-fade-y opacity-30 pointer-events-none" />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <ScrollReveal className="text-center mb-16">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-6"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            Powerful Features
-          </motion.div>
-          <h2 className="text-4xl sm:text-5xl font-bold mb-5 tracking-tight">
-            Everything You Need to{" "}
-            <span className="gradient-text glow-text-subtle">
-              Trade Successfully
-            </span>
+        {/* Heading */}
+        <ScrollReveal className="text-center mb-16 sm:mb-20">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-6">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+            What we offer
+          </div>
+          <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold mb-5 tracking-tight">
+            Three Lenses.{" "}
+            <span className="gradient-text glow-text-subtle">One Platform.</span>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto text-lg">
-            Three powerful lenses, one intelligent platform. Get AI analysis,
-            live market commentary, and expert education all in one place.
+            Provide all your trading needs — analysis, live charts, and
+            education — engineered to work as one connected loop.
           </p>
         </ScrollReveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature, i) => (
-            <ScrollReveal key={feature.title} delay={i * 0.1}>
+        {/* Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-7">
+          {lenses.map((lens, i) => (
+            <ScrollReveal key={lens.name} delay={i * 0.14}>
               <motion.div
-                whileHover={{ y: -8, transition: { duration: 0.3 } }}
-                className="group relative h-full rounded-2xl border border-border/60 bg-card/40 backdrop-blur-sm p-6 overflow-hidden transition-all hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5"
+                whileHover={{ y: -10 }}
+                transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                className="group relative h-full rounded-3xl border border-border/60 bg-card/40 backdrop-blur-sm p-7 sm:p-8 overflow-hidden transition-colors hover:border-primary/30"
               >
-                {/* Glow effect on hover */}
+                {/* Hover glow wash */}
                 <div
-                  className={`absolute -top-20 -right-20 w-40 h-40 rounded-full bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-20 blur-3xl transition-opacity duration-500`}
+                  className={`absolute inset-0 bg-gradient-to-br ${lens.hue} opacity-0 group-hover:opacity-100 transition-opacity duration-700`}
                 />
 
-                <div
-                  className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${feature.color} mb-4 shadow-lg ${feature.glow}`}
-                >
-                  <feature.icon className="h-6 w-6 text-white" />
-                </div>
+                {/* Big index number */}
+                <span className="absolute top-5 right-7 font-display text-6xl font-bold text-white/[0.05] group-hover:text-primary/10 transition-colors duration-500 select-none">
+                  {lens.number}
+                </span>
 
-                <div className="absolute top-4 right-4 text-xs font-medium text-muted-foreground bg-muted/80 px-2 py-1 rounded-full border border-border/50">
-                  {feature.stat}
-                </div>
+                <div className="relative">
+                  {/* Icon */}
+                  <div
+                    className={`inline-flex p-3.5 rounded-2xl border ${lens.iconBg} mb-6 group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-500`}
+                  >
+                    <lens.icon className={`h-7 w-7 ${lens.iconColor}`} />
+                  </div>
 
-                <h3 className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {feature.description}
-                </p>
+                  <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground mb-2">
+                    {lens.tagline}
+                  </div>
+                  <h3 className="font-display text-2xl font-bold mb-3">
+                    {lens.name}
+                  </h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+                    {lens.description}
+                  </p>
+
+                  {/* Feature bullets */}
+                  <ul className="space-y-2.5 mb-7">
+                    {lens.points.map((point) => (
+                      <li
+                        key={point}
+                        className="flex items-center gap-2.5 text-sm text-foreground/75"
+                      >
+                        <span className="h-1 w-1 rounded-full bg-primary shrink-0" />
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Link
+                    href={lens.href}
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary group-hover:gap-3 transition-all"
+                  >
+                    Explore {lens.name.replace("Lens", " Lens")}
+                    <ArrowUpRight className="h-4 w-4" />
+                  </Link>
+                </div>
 
                 {/* Bottom accent line */}
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-primary/60 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
               </motion.div>
             </ScrollReveal>
           ))}

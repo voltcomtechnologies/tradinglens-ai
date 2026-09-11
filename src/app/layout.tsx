@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Sora } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 
 const geistSans = Geist({
-  variable: "--font-geist-sans",
+  variable: "--font-sans",
   subsets: ["latin"],
 });
 
@@ -13,10 +13,43 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const sora = Sora({
+  variable: "--font-heading",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
 export const metadata: Metadata = {
-  title: "TradingLens AI | Smart Forex Trading Intelligence",
-  description: "AI-powered forex analysis, real-time chart intelligence, and expert-led education platform",
-  keywords: ["forex", "trading", "AI", "analysis", "education", "charts"],
+  title: {
+    default: "TradingLens AI — Trade Smarter with AI-Powered Precision",
+    template: "%s | TradingLens AI",
+  },
+  description:
+    "TradingLens AI helps you analyze the market, learn proven strategies, and make confident trading decisions — all in one intelligent platform.",
+  keywords: [
+    "forex",
+    "trading",
+    "AI",
+    "market analysis",
+    "trading education",
+    "chart intelligence",
+    "prop firm",
+    "funded trading",
+  ],
+  metadataBase: new URL("https://tradinglensai.com"),
+  openGraph: {
+    title: "TradingLens AI — Trade Smarter with AI-Powered Precision",
+    description:
+      "Real-time AI market analysis, live chart sessions, and structured trading education — all in one intelligent platform.",
+    type: "website",
+    siteName: "TradingLens AI",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TradingLens AI — Trade Smarter with AI-Powered Precision",
+    description:
+      "Real-time AI market analysis, live chart sessions, and structured trading education — all in one intelligent platform.",
+  },
 };
 
 export default function RootLayout({
@@ -27,7 +60,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground min-h-screen`}
+        className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} antialiased bg-background text-foreground min-h-screen`}
       >
         <Providers>{children}</Providers>
       </body>

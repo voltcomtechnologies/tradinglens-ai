@@ -14,6 +14,8 @@ export default function middleware(request: NextRequest) {
   // Allow public routes through
   const isPublicRoute = [
     "/",
+    "/about",
+    "/contact",
     "/auth/signin",
     "/auth/signup",
     "/auth/error",
