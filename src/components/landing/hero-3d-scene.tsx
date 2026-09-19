@@ -66,49 +66,49 @@ function FloatingShape({
 function Scene() {
   return (
     <>
-      <ambientLight intensity={0.3} color="#ff8c00" />
-      <pointLight position={[10, 10, 10]} intensity={1.5} color="#ff6b00" />
-      <pointLight position={[-10, -10, -5]} intensity={0.8} color="#ff4500" />
-      <directionalLight position={[5, 5, 5]} intensity={0.5} color="#fbbf24" />
+      <ambientLight intensity={0.3} color="#a78bfa" />
+      <pointLight position={[10, 10, 10]} intensity={1.5} color="#67e8f9" />
+      <pointLight position={[-10, -10, -5]} intensity={0.8} color="#818cf8" />
+      <directionalLight position={[5, 5, 5]} intensity={0.5} color="#c4b5fd" />
 
       <FloatingShape
         position={[-3, 1.5, -2]}
-        color="#ff6b00"
+        color="#67e8f9"
         geometry="icosahedron"
         speed={0.8}
         scale={1.2}
       />
       <FloatingShape
         position={[3.5, -1, -1]}
-        color="#ff8c00"
+        color="#a78bfa"
         geometry="torusKnot"
         speed={1.2}
         scale={0.8}
       />
       <FloatingShape
         position={[2, 2.5, -3]}
-        color="#fbbf24"
+        color="#c4b5fd"
         geometry="octahedron"
         speed={0.6}
         scale={0.9}
       />
       <FloatingShape
         position={[-2.5, -2, -1.5]}
-        color="#ff4500"
+        color="#818cf8"
         geometry="sphere"
         speed={1}
         scale={0.6}
       />
       <FloatingShape
         position={[0.5, -2.5, -2.5]}
-        color="#ea580c"
+        color="#22d3ee"
         geometry="icosahedron"
         speed={1.4}
         scale={0.5}
       />
       <FloatingShape
         position={[-4, 0, -3]}
-        color="#f59e0b"
+        color="#a5b4fc"
         geometry="octahedron"
         speed={0.9}
         scale={0.7}
@@ -116,7 +116,7 @@ function Scene() {
 
       {/* Subtle grid floor */}
       <gridHelper
-        args={[30, 30, new THREE.Color("#292524"), new THREE.Color("#1c1917")]}
+        args={[30, 30, new THREE.Color("#1e3a5f"), new THREE.Color("#17233a")]}
         position={[0, -4, 0]}
       />
     </>

@@ -67,70 +67,70 @@
 }
 
 :root {
-  --background: #070605;
-  --foreground: #fafaf9;
-  --card: #12100e;
-  --card-foreground: #fafaf9;
-  --popover: #12100e;
-  --popover-foreground: #fafaf9;
-  --primary: #ff6b00;
-  --primary-foreground: #ffffff;
-  --secondary: #1c1917;
-  --secondary-foreground: #e7e5e4;
-  --muted: #1c1917;
-  --muted-foreground: #a8a29e;
-  --accent: #ffb020;
-  --accent-foreground: #1c1204;
-  --destructive: #ef4444;
-  --success: #10b981;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: #1c1917;
-  --ring: #ff6b00;
-  --chart-1: #ff6b00;
-  --chart-2: #ffb020;
-  --chart-3: #f59e0b;
-  --chart-4: #ef4444;
-  --chart-5: #8b5cf6;
-  --radius: 0.75rem;
-  --sidebar: #070605;
-  --sidebar-foreground: #fafaf9;
-  --sidebar-primary: #ff6b00;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1c1917;
-  --sidebar-accent-foreground: #e7e5e4;
-  --sidebar-border: #1c1917;
-  --sidebar-ring: #ff6b00;
+  --background: #070d18;
+  --foreground: #f8fbff;
+  --card: #101827;
+  --card-foreground: #f8fbff;
+  --popover: #101827;
+  --popover-foreground: #f8fbff;
+  --primary: #67e8f9;
+  --primary-foreground: #07111d;
+  --secondary: #111c2d;
+  --secondary-foreground: #dbeafe;
+  --muted: #111c2d;
+  --muted-foreground: #94a3b8;
+  --accent: #a78bfa;
+  --accent-foreground: #100b24;
+  --destructive: #fb7185;
+  --success: #6ee7b7;
+  --border: rgba(148, 163, 184, 0.14);
+  --input: #111c2d;
+  --ring: #67e8f9;
+  --chart-1: #67e8f9;
+  --chart-2: #a78bfa;
+  --chart-3: #6ee7b7;
+  --chart-4: #fb7185;
+  --chart-5: #f0abfc;
+  --radius: 0.85rem;
+  --sidebar: #070d18;
+  --sidebar-foreground: #f8fbff;
+  --sidebar-primary: #67e8f9;
+  --sidebar-primary-foreground: #07111d;
+  --sidebar-accent: #111c2d;
+  --sidebar-accent-foreground: #dbeafe;
+  --sidebar-border: #1e293b;
+  --sidebar-ring: #67e8f9;
 }
 
 .dark {
-  --background: #070605;
-  --foreground: #fafaf9;
-  --card: #12100e;
-  --card-foreground: #fafaf9;
-  --popover: #12100e;
-  --popover-foreground: #fafaf9;
-  --primary: #ff6b00;
-  --primary-foreground: #ffffff;
-  --accent: #ffb020;
-  --accent-foreground: #1c1204;
-  --destructive: #ef4444;
-  --success: #10b981;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: #1c1917;
-  --ring: #ff6b00;
-  --chart-1: #ff6b00;
-  --chart-2: #ffb020;
-  --chart-3: #f59e0b;
-  --chart-4: #ef4444;
-  --chart-5: #8b5cf6;
-  --sidebar: #070605;
-  --sidebar-foreground: #fafaf9;
-  --sidebar-primary: #ff6b00;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1c1917;
-  --sidebar-accent-foreground: #e7e5e4;
-  --sidebar-border: #1c1917;
-  --sidebar-ring: #ff6b00;
+  --background: #070d18;
+  --foreground: #f8fbff;
+  --card: #101827;
+  --card-foreground: #f8fbff;
+  --popover: #101827;
+  --popover-foreground: #f8fbff;
+  --primary: #67e8f9;
+  --primary-foreground: #07111d;
+  --accent: #a78bfa;
+  --accent-foreground: #100b24;
+  --destructive: #fb7185;
+  --success: #6ee7b7;
+  --border: rgba(148, 163, 184, 0.14);
+  --input: #111c2d;
+  --ring: #67e8f9;
+  --chart-1: #67e8f9;
+  --chart-2: #a78bfa;
+  --chart-3: #6ee7b7;
+  --chart-4: #fb7185;
+  --chart-5: #f0abfc;
+  --sidebar: #070d18;
+  --sidebar-foreground: #f8fbff;
+  --sidebar-primary: #67e8f9;
+  --sidebar-primary-foreground: #07111d;
+  --sidebar-accent: #111c2d;
+  --sidebar-accent-foreground: #dbeafe;
+  --sidebar-border: #1e293b;
+  --sidebar-ring: #67e8f9;
 }
 
 @layer base {
@@ -177,24 +177,24 @@
     font-family: var(--font-heading);
   }
   .gradient-text {
-    background: linear-gradient(100deg, #ffd9a8 0%, #ff8c00 40%, #ff6b00 70%, #ffb020 100%);
+    background: linear-gradient(100deg, #dbeafe 0%, #67e8f9 42%, #a78bfa 76%, #f0abfc 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
   }
   .gradient-text-alt {
-    background: linear-gradient(100deg, #ff6b00, #ffb020, #ffd9a8);
+    background: linear-gradient(100deg, #67e8f9, #a78bfa, #f0abfc);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
   }
   .glow-text {
-    text-shadow: 0 0 18px rgba(255, 107, 0, 0.45), 0 0 42px rgba(255, 107, 0, 0.18);
+    text-shadow: 0 0 18px rgba(103, 232, 249, 0.35), 0 0 42px rgba(167, 139, 250, 0.18);
   }
   .glow-text-subtle {
-    text-shadow: 0 0 10px rgba(255, 140, 0, 0.35);
+    text-shadow: 0 0 10px rgba(103, 232, 249, 0.3);
   }
 
   /* ------- surfaces ------- */
