@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, FileText, Loader2 } from "lucide-react";
+import { Maximize2, Minimize2, FileText, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PDFViewerProps {

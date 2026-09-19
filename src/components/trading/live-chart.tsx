@@ -199,7 +199,7 @@ const LiveChart = forwardRef<LiveChartHandle, LiveChartProps>(function LiveChart
       chartRef.current = null;
       seriesRef.current = null;
     };
-  }, []);
+  }, [granularity]);
 
   // Re-fit `fitContent()` after symbol/granularity changes so the new data
   // range fills the viewport. Reproduction of the chart history is done via

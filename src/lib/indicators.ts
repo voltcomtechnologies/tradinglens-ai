@@ -29,13 +29,6 @@ export type OHLC = {
   close: number;
 };
 
-/** Padded copy: output is the same length as `values`, warm-up positions set to NaN. */
-function padOutput(values: number[], period: number): number[] {
-  const out = new Array<number>(values.length).fill(NaN);
-  for (let i = period - 1; i < values.length; i++) out[i] = values[i];
-  return out;
-}
-
 /**
  * Simple moving average. SMA[i] is defined for i >= period-1, NaN before.
  */

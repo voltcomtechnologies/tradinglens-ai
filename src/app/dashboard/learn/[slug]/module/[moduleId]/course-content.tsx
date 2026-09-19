@@ -132,12 +132,6 @@ export function CourseContent({
     }
   }, [hasNext, handleModuleComplete, router, course, currentModuleIndex]);
 
-  const materialIndex = currentModule.materials.findIndex(
-    (m) => m.id === selectedMaterial
-  );
-  const hasPrevMaterial = materialIndex > 0;
-  const hasNextMaterial = materialIndex < currentModule.materials.length - 1;
-
   return (
     <div className="min-h-[calc(100vh-4rem)]">
       {/* Top Bar */}

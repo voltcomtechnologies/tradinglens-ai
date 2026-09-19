@@ -16,7 +16,6 @@ import { ForexNewsTicker } from "@/components/trading/forex-news-ticker";
 import { useTradingLensPrefs } from "@/lib/hooks/use-trading-lens-prefs";
 import type { ScanHistoryItem } from "@/lib/hooks/use-trading";
 import type { LiveChartHandle, LiveChartFeedStatus } from "@/components/trading/live-chart";
-import type { Granularity } from "@/app/api/market/data/route";
 
 // `lightweight-charts` reads `document` and creates a canvas at import time,
 // so the LiveChart module has to be loaded off the SSR path. The dynamic

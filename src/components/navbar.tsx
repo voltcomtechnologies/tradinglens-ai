@@ -91,7 +91,7 @@ export function Navbar({ user }: NavbarProps) {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [setUserMenuOpen, setMobileOpen]);
+  }, [mobileOpen, userMenuOpen]);
 
   useEffect(() => {
     let rafId: number;

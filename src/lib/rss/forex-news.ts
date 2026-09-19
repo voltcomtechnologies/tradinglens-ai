@@ -113,7 +113,7 @@ export async function fetchForexNews(options: {
       const items = parseForexRss(xml);
       cache = { fetchedAt: Date.now(), data: items };
       return items;
-    } catch (err) {
+    } catch {
       // On error: if we have a stale cache entry, prefer it to keeping the
       // ticker empty. Otherwise swallow and return [] — no console crash.
       if (cache) return cache.data;

@@ -40,7 +40,6 @@ export default function LeaderboardPage() {
   const entries = data?.entries ?? [];
   const currentUser = data?.currentUser;
   const top3 = entries.slice(0, 3);
-  const rest = entries.slice(3);
 
   return (
     <div className="space-y-8">

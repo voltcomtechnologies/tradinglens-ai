@@ -8,14 +8,13 @@ import { Button } from "@/components/ui/button";
 interface WelcomeViewProps {
   onStartSession: () => void;
   isConnecting: boolean;
-  isConfigured: boolean;
+  isConfigured?: boolean;
   errorMessage?: string | null;
 }
 
 export function WelcomeView({
   onStartSession,
   isConnecting,
-  isConfigured,
   errorMessage,
 }: WelcomeViewProps) {
   return (

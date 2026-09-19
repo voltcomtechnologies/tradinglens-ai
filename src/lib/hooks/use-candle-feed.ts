@@ -27,7 +27,7 @@
  * callbacks, so the SSR render path returns stable shapes.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CandlestickData, UTCTimestamp } from "lightweight-charts";
 
 import { useSocketPrices } from "@/lib/hooks/use-socket";

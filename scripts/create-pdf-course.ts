@@ -104,7 +104,7 @@ async function main() {
 
   for (let i = 0; i < modulesData.length; i++) {
     const modData = modulesData[i];
-    const module = await prisma.courseModule.create({
+    const courseModule = await prisma.courseModule.create({
       data: {
         courseId: course.id,
         title: modData.title,
@@ -113,11 +113,11 @@ async function main() {
         orderIndex: i + 1,
       },
     });
-    console.log("  Created module:", module.title);
+    console.log("  Created module:", courseModule.title);
 
     await prisma.pDFMaterial.create({
       data: {
-        moduleId: module.id,
+        moduleId: courseModule.id,
         title: modData.materialTitle,
         fileUrl: "/courses/intermediate-trading-course.pdf",
         orderIndex: 1,

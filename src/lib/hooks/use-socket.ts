@@ -32,11 +32,9 @@ export interface PriceMap {
 
 let socketPromise: Promise<Socket | null> | null = null;
 let socketInstance: Socket | null = null;
-let listeners = new Set<() => void>();
+const listeners = new Set<() => void>();
 let currentPrices: PriceMap = {};
 let isConnected = false;
-let connectionAttempted = false;
-let isClientSide = false;
 
 function notifyListeners(): void {
   listeners.forEach((fn) => fn());
@@ -45,8 +43,6 @@ function notifyListeners(): void {
 async function getSocket(): Promise<Socket | null> {
   // Only connect on the client side
   if (typeof window === "undefined") return null;
-
-  isClientSide = true;
 
   if (socketInstance?.connected) return socketInstance;
 
@@ -111,10 +107,9 @@ async function getSocket(): Promise<Socket | null> {
 
         return socketInstance?.connected ? socketInstance : null;
       } catch {
-        return null;
-      } finally {
-        connectionAttempted = true;
-      }
+        return null;        } finally {
+          // Keep the promise settled for subsequent callers.
+        }
     })();
   }
 

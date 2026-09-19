@@ -97,13 +97,8 @@ describe("extractStreamError", () => {
 
 describe("SentenceSequencer", () => {
   let spoken: string[] = [];
-  let onEndFor: (text: string) => void;
-
   beforeEach(() => {
     spoken = [];
-    onEndFor = (text) => {
-      // Mimic useSpeechSynthesis.speak — record text and let caller trigger end.
-    };
   });
 
   /** Build a mock speak that records the text and lets the test fire onEnd

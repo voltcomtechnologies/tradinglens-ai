@@ -4,12 +4,10 @@ import { motion } from "framer-motion";
 import {
   BookOpen,
   Play,
-  FileText,
   Award,
   Clock,
   Loader2,
   ArrowRight,
-  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -53,7 +51,6 @@ export default function EduLensPage() {
   const completedModules = learningStats?.modulesCompleted ?? 0;
   const quizzesPassed = learningStats?.quizzesPassed ?? 0;
   const learningHours = Math.round((learningStats?.learningMinutes ?? 0) / 60);
-  const totalTimeSpent = learningStats?.learningMinutes ?? 0;
 
   return (
     <div className="space-y-8">

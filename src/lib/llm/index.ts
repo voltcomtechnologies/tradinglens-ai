@@ -3,7 +3,6 @@ import type {
   ChatMessage,
   ChatCompletionOptions,
   StreamingChatCompletionOptions,
-  ChatCompletionStream,
 } from "./types";
 import { groqClient } from "./groq";
 import { openrouterClient } from "./openrouter";

@@ -104,7 +104,7 @@ export function ChartInsightPanel({
     };
   }, [supported]);
 
-  const handleInsight = useCallback((text: string) => {
+  const handleInsight = useCallback(() => {
     // No-op side-effects beyond the hook's internal state — the parent's
     // own state cache is the user-facing transcript. The hook already
     // calls speak() itself.

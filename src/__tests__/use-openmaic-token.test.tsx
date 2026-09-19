@@ -1,4 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import type { AxiosResponse } from "axios";
+
+type TestGlobal = typeof globalThis & {
+  __openmaicAxiosOnRejected?: (error: unknown) => Promise<unknown>;
+};
+
+const testGlobal = globalThis as TestGlobal;
 
 const mockAssign = vi.hoisted(() => vi.fn());
 
@@ -14,7 +21,11 @@ vi.mock("axios", async () => {
         interceptors: {
           response: {
             use: vi.fn((_onFulfilled, onRejected) => {
-              (globalThis as any).__openmaicAxiosOnRejected = onRejected;
+              if (typeof onRejected === "function") {
+                (globalThis as TestGlobal).__openmaicAxiosOnRejected = onRejected as (
+                  error: unknown,
+                ) => Promise<unknown>;
+              }
             }),
           },
         },
@@ -44,28 +55,31 @@ describe("use-openmaic-token 401 redirect", () => {
   });
 
   it("redirects to /auth/signin on a 401 response", async () => {
-    const onRejected = (globalThis as any).__openmaicAxiosOnRejected;
+    const onRejected = testGlobal.__openmaicAxiosOnRejected;
+    expect(onRejected).toBeDefined();
     const error = new axios.AxiosError("Unauthorized");
-    error.response = { status: 401 } as any;
+    error.response = { status: 401 } as AxiosResponse;
 
-    await expect(onRejected(error)).rejects.toEqual(error);
+    await expect(onRejected?.(error)).rejects.toEqual(error);
     expect(mockAssign).toHaveBeenCalledWith("/auth/signin");
   });
 
   it("does not redirect for non-401 errors", async () => {
-    const onRejected = (globalThis as any).__openmaicAxiosOnRejected;
+    const onRejected = testGlobal.__openmaicAxiosOnRejected;
+    expect(onRejected).toBeDefined();
     const error = new axios.AxiosError("Server error");
-    error.response = { status: 500 } as any;
+    error.response = { status: 500 } as AxiosResponse;
 
-    await expect(onRejected(error)).rejects.toEqual(error);
+    await expect(onRejected?.(error)).rejects.toEqual(error);
     expect(mockAssign).not.toHaveBeenCalled();
   });
 
   it("does not redirect when the response has no status", async () => {
-    const onRejected = (globalThis as any).__openmaicAxiosOnRejected;
+    const onRejected = testGlobal.__openmaicAxiosOnRejected;
+    expect(onRejected).toBeDefined();
     const error = new axios.AxiosError("Network error");
 
-    await expect(onRejected(error)).rejects.toEqual(error);
+    await expect(onRejected?.(error)).rejects.toEqual(error);
     expect(mockAssign).not.toHaveBeenCalled();
   });
 });

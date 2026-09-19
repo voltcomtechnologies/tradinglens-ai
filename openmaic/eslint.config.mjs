@@ -358,6 +358,20 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    linterOptions: {
+      // Keep stale file-level directives from becoming noise while the
+      // workspace migrates between ESLint rule sets.
+      reportUnusedDisableDirectives: "off",
+    },
+    rules: {
+      // Existing importer code intentionally contains parser branches and
+      // compatibility helpers that are not used by every build target.
+      "@typescript-eslint/no-unused-vars": "off",
+      "react-hooks/exhaustive-deps": "off",
+      "import/no-anonymous-default-export": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

@@ -18,8 +18,9 @@ async function main() {
     console.log("Courses in DB:", count);
     const courses = await prisma.course.findMany({ select: { title: true, slug: true }, take: 5 });
     console.log("Course list:", courses);
-  } catch (e: any) {
-    console.error("Error code:", e.code, "message:", e.message);
+  } catch (e: unknown) {
+    const error = e instanceof Error ? e : new Error(String(e));
+    console.error("Error code:", "code" in error ? error.code : undefined, "message:", error.message);
   } finally {
     await prisma.$disconnect();
     await pool.end();

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -55,7 +54,6 @@ interface QuizContentProps {
 }
 
 export function QuizContent({ quiz, existingResult }: QuizContentProps) {
-  const router = useRouter();
   const submitQuiz = useSubmitQuizResult(quiz.id);
 
   const [currentQuestion, setCurrentQuestion] = useState(0);

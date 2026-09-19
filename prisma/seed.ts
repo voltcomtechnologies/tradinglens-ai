@@ -529,7 +529,7 @@ async function main() {
 
     for (let mi = 0; mi < courseData.modules.length; mi++) {
       const mod = courseData.modules[mi];
-      const module = await prisma.courseModule.create({
+      const courseModule = await prisma.courseModule.create({
         data: {
           courseId: course.id,
           title: mod.title,
@@ -543,7 +543,7 @@ async function main() {
         const mat = mod.materials[mati];
         await prisma.pDFMaterial.create({
           data: {
-            moduleId: module.id,
+            moduleId: courseModule.id,
             title: mat.title,
             fileUrl: mat.fileUrl,
             pageCount: mat.pageCount,

@@ -1,5 +1,5 @@
-import type { NextAuthConfig, DefaultSession } from "next-auth";
-import type { JWT } from "next-auth/jwt";
+import type { NextAuthConfig } from "next-auth";
+import "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 

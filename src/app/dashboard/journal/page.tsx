@@ -51,7 +51,7 @@ export default function JournalPage() {
   const { data, isLoading, isError, refetch } = useJournalEntries(filters);
   const { data: stats, isLoading: statsLoading } = useJournalStats();
 
-  const entries = data?.entries ?? [];
+  const entries = useMemo(() => data?.entries ?? [], [data?.entries]);
   const filteredEntries = useMemo(() => {
     let result = entries;
     if (strategyFilter) {

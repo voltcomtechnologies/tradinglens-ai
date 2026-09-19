@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import {
   CheckCircle2,
-  Lock,
   PlayCircle,
   FileText,
   BookOpen,

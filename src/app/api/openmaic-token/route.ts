@@ -120,7 +120,7 @@ export async function POST(request: Request) {
         { status: 403 }
       );
     }
-    let lensAccess: string[] = sub
+    const lensAccess: string[] = sub
       ? parseLensAccess(sub.plan.lensAccess)
       : ["edu"]; // admin bypass: synthesize full-lens access
     // Note: demo seed SubscriptionPlan rows have lensAccess as a JSON array.

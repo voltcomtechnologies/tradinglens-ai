@@ -10,11 +10,8 @@ import {
   Check,
   ArrowRight,
   Loader2,
-  Clock,
   AlertTriangle,
   CheckCircle2,
-  XCircle,
-  ExternalLink,
   Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
