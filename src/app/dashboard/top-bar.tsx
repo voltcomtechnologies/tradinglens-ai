@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Search, Bell } from "lucide-react";
 import Link from "next/link";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { useSession } from "next-auth/react";
@@ -10,7 +10,6 @@ export function DashboardTopBar() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { data: session } = useSession();
 
-  // Close sidebar on route change
   useEffect(() => {
     const handleRouteChange = () => setSidebarOpen(false);
     window.addEventListener("popstate", handleRouteChange);
@@ -19,7 +18,6 @@ export function DashboardTopBar() {
 
   return (
     <>
-      {/* Mobile sidebar */}
       <DashboardSidebar
         sidebarOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -30,35 +28,35 @@ export function DashboardTopBar() {
         }}
       />
 
-      {/* Mobile top bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-20 h-14 border-b border-border bg-background/80 backdrop-blur-xl flex items-center justify-between px-4">
-        <div className="flex items-center gap-3">
+      <div className="lg:hidden fixed inset-x-0 top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-white/[0.06] bg-[#050a18]/80 backdrop-blur-2xl px-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg hover:bg-muted transition-colors"
-            aria-label="Toggle menu"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.06] text-white hover:bg-white/[0.1] transition-colors"
+            aria-label={sidebarOpen ? "Close menu" : "Open menu"}
           >
-            {sidebarOpen ? (
-              <X className="h-5 w-5 text-foreground" />
-            ) : (
-              <Menu className="h-5 w-5 text-foreground" />
-            )}
+            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
-          <Link href="/dashboard" className="flex items-center">
-            <img
-              src="/logo.png"
-              alt="TradingLens AI"
-              className="h-8 w-auto max-w-[140px] object-contain logo-enhance"
-            />
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <img src="/logo.png" alt="TradingLens AI" className="h-7 w-auto object-contain logo-enhance" />
+            <span className="hidden xs:flex flex-col leading-none">
+              <span className="font-display text-[11px] font-bold text-white">TRADINGLENS AI</span>
+              <span className="text-[8px] tracking-[0.18em] text-white/35">COCKPIT</span>
+            </span>
           </Link>
         </div>
-        <button className="relative p-2 rounded-lg hover:bg-muted transition-colors">
-          <svg className="h-5 w-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-          </svg>
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/50" aria-label="Search">
+            <Search className="h-4 w-4" />
+          </button>
+          <button className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-white/60" aria-label="Notifications">
+            <Bell className="h-4 w-4" />
+            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary ring-2 ring-[#050a18]" />
+          </button>
+        </div>
       </div>
+      {/* spacer for fixed mobile bar */}
+      <div className="lg:hidden h-14" aria-hidden />
     </>
   );
 }

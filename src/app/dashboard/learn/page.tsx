@@ -1,14 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-  BookOpen,
-  Play,
-  Award,
-  Clock,
-  Loader2,
-  ArrowRight,
-} from "lucide-react";
+import { BookOpen, Play, Award, Clock, Loader2, ArrowRight, Sparkles, GraduationCap } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -16,204 +9,123 @@ import { cn } from "@/lib/utils";
 import { useCourses, useCourseProgress } from "@/lib/hooks/use-courses";
 import { useLearningStats } from "@/lib/hooks/use-learning-stats";
 
-const levelConfig: Record<string, { badge: string; gradient: string }> = {
-  beginner: {
-    badge: "bg-emerald-500/10 text-emerald-400",
-    gradient: "from-emerald-500/20 to-emerald-600/10",
-  },
-  intermediate: {
-    badge: "bg-blue-500/10 text-blue-400",
-    gradient: "from-blue-500/20 to-blue-600/10",
-  },
-  advanced: {
-    badge: "bg-violet-500/10 text-violet-400",
-    gradient: "from-violet-500/20 to-violet-600/10",
-  },
-  all: {
-    badge: "bg-rose-500/10 text-rose-400",
-    gradient: "from-rose-500/20 to-rose-600/10",
-  },
+const levelConfig: Record<string, { badge: string; gradient: string; ring: string }> = {
+  beginner: { badge: "bg-emerald-400/10 text-emerald-300 border-emerald-400/20", gradient: "from-emerald-400/20 via-emerald-400/5 to-transparent", ring: "ring-emerald-400/20" },
+  intermediate: { badge: "bg-accent/10 text-accent border-accent/20", gradient: "from-accent/20 via-accent/5 to-transparent", ring: "ring-accent/20" },
+  advanced: { badge: "bg-violet-400/10 text-violet-300 border-violet-400/20", gradient: "from-violet-400/20 via-violet-400/5 to-transparent", ring: "ring-violet-400/20" },
+  all: { badge: "bg-primary/10 text-primary border-primary/20", gradient: "from-primary/20 via-primary/5 to-transparent", ring: "ring-primary/20" },
 };
 
 export default function EduLensPage() {
   const { data: courses, isLoading: coursesLoading } = useCourses();
   const { data: progressData, isLoading: progressLoading } = useCourseProgress();
   const { data: learningStats, isLoading: statsLoading } = useLearningStats();
-
   const isLoading = coursesLoading || progressLoading || statsLoading;
 
-  // Aggregate stats come from /api/learning-stats (which counts real
-  // QuizResult rows), so the "Quizzes Passed" tile is no longer a hard-
-  // coded "—". The legacy progressData feed is preserved for the per-
-  // course progress bar and the courses-enrolled count fallback.
-  const enrolledCourses =
-    learningStats?.enrolledCourses ?? progressData?.length ?? 0;
+  const enrolledCourses = learningStats?.enrolledCourses ?? progressData?.length ?? 0;
   const completedModules = learningStats?.modulesCompleted ?? 0;
   const quizzesPassed = learningStats?.quizzesPassed ?? 0;
   const learningHours = Math.round((learningStats?.learningMinutes ?? 0) / 60);
 
   return (
-    <div className="space-y-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 rounded-lg bg-purple-500/10">
-            <BookOpen className="h-5 w-5 text-purple-400" />
-          </div>
-          <h1 className="text-2xl font-bold">Edu Lens</h1>
+    <div className="space-y-6">
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="inline-flex items-center gap-2 rounded-full border border-violet-400/15 bg-violet-400/10 px-3 py-1 text-[11px] font-bold tracking-[0.14em] text-violet-300">
+          <GraduationCap className="h-3.5 w-3.5" /> EDU LENS
         </div>
-        <p className="text-muted-foreground">
-          Expert-led courses, interactive PDFs, and quizzes to accelerate your
-          trading education.
-        </p>
+        <h1 className="mt-3 font-display text-2xl sm:text-3xl font-bold tracking-tight text-white">Learn. Practice. Compound.</h1>
+        <p className="mt-1.5 text-sm text-white/45">Expert-led courses, interactive PDFs, and adaptive quizzes — built for real traders.</p>
       </motion.div>
 
-      {/* Progress overview */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+        transition={{ delay: 0.06 }}
         className="grid grid-cols-2 lg:grid-cols-4 gap-4"
       >
         {[
-          {
-            label: "Courses Enrolled",
-            value: isLoading ? "—" : String(enrolledCourses),
-            icon: BookOpen,
-            color: "text-purple-400",
-          },
-          {
-            label: "Modules Completed",
-            value: isLoading ? "—" : String(completedModules),
-            icon: Play,
-            color: "text-emerald-400",
-          },
-          {
-            label: "Quizzes Passed",
-            value: isLoading ? "—" : String(quizzesPassed),
-            icon: Award,
-            color: "text-amber-400",
-          },
-          {
-            label: "Learning Hours",
-            value: isLoading ? "—" : String(learningHours),
-            icon: Clock,
-            color: "text-blue-400",
-          },
-        ].map((stat, i) => (
-          <div
-            key={i}
-            className="rounded-xl border border-border bg-card p-4"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <stat.icon className={cn("h-4 w-4", stat.color)} />
-            </div>
-            <p className="text-xl font-bold">{stat.value}</p>
-            <p className="text-xs text-muted-foreground">{stat.label}</p>
+          { label: "Courses Enrolled", value: isLoading ? "—" : String(enrolledCourses), icon: BookOpen, tint: "border-violet-400/15 bg-violet-400/10 text-violet-300" },
+          { label: "Modules Completed", value: isLoading ? "—" : String(completedModules), icon: Play, tint: "border-emerald-400/15 bg-emerald-400/10 text-emerald-300" },
+          { label: "Quizzes Passed", value: isLoading ? "—" : String(quizzesPassed), icon: Award, tint: "border-primary/15 bg-primary/10 text-primary" },
+          { label: "Learning Hours", value: isLoading ? "—" : String(learningHours), icon: Clock, tint: "border-accent/15 bg-accent/10 text-accent" },
+        ].map((s) => (
+          <div key={s.label} className="rounded-[20px] border border-white/10 bg-[#0b1428]/60 backdrop-blur p-5">
+            <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl border", s.tint)}>
+              <s.icon className="h-4 w-4" />
+            </span>
+            <p className="mt-3 font-display text-xl font-bold text-white">{s.value}</p>
+            <p className="text-xs font-bold tracking-wide text-white/35 mt-1">{s.label}</p>
           </div>
         ))}
       </motion.div>
 
-      {/* Course grid */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">Available Courses</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display text-lg font-semibold text-white">Available Courses</h2>
+          <span className="text-xs text-white/30">{courses?.length ?? 0} courses</span>
+        </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-16">
+          <div className="flex items-center justify-center py-16 rounded-[20px] border border-white/10 bg-[#0b1428]/40">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         ) : courses && courses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {courses.map((course, i) => {
+            {courses.map((course: any, i: number) => {
               const level = course.level.toLowerCase();
-              const config = levelConfig[level] || levelConfig.beginner;
+              const cfg = levelConfig[level] || levelConfig.beginner;
               const totalModules = course.modules.length;
-              const totalDuration = course.modules.reduce(
-                (sum, m) => sum + (m.duration ?? 0),
-                0
-              );
-              const progress = progressData?.find(
-                (p) => p.courseId === course.id
-              );
-
+              const totalDuration = course.modules.reduce((s: number, m: any) => s + (m.duration ?? 0), 0);
+              const progress = progressData?.find((p: any) => p.courseId === course.id);
               return (
-                <motion.div
-                  key={course.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 + i * 0.05 }}
-                >
-                  <Link
-                    href={`/dashboard/learn/${course.slug}`}
-                    className="block group"
-                  >
-                    <div className="group rounded-xl border border-border bg-card overflow-hidden hover:border-primary/30 transition-all duration-300">
-                      <div
-                        className={cn(
-                          "h-32 bg-gradient-to-br flex items-center justify-center relative",
-                          config.gradient
-                        )}
-                      >
-                        <div className="p-3 rounded-xl bg-background/20 backdrop-blur-sm">
-                          <BookOpen className="h-8 w-8 text-white" />
-                        </div>
+                <motion.div key={course.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 + i * 0.04 }}>
+                  <Link href={`/dashboard/learn/${course.slug}`} className="block group">
+                    <div className="overflow-hidden rounded-[20px] border border-white/10 bg-[#0b1428]/60 backdrop-blur hover:border-primary/20 hover:bg-white/[0.04] transition-all">
+                      <div className={cn("relative flex h-28 items-center justify-center bg-gradient-to-br", cfg.gradient)}>
+                        <span className={cn("flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.06] border backdrop-blur", cfg.badge)}>
+                          <BookOpen className="h-6 w-6 text-white" />
+                        </span>
                         {progress && (
-                          <div className="absolute bottom-0 left-0 right-0 px-4 pb-2">
-                            <Progress
-                              value={progress.progressPct}
-                              className="h-1 bg-white/20"
-                            />
+                          <div className="absolute inset-x-0 bottom-0 px-4 pb-3">
+                            <Progress value={progress.progressPct} className="h-1 bg-white/10" />
                           </div>
                         )}
                       </div>
                       <div className="p-5">
                         <div className="flex items-center gap-2 mb-2">
-                          <Badge
-                            variant="secondary"
-                            className={cn("text-xs", config.badge)}
-                          >
-                            {course.level}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {course.category}
-                          </span>
+                          <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-wide", cfg.badge)}>{course.level}</span>
+                          <span className="text-xs text-white/30">{course.category}</span>
                         </div>
-                        <h3 className="font-semibold group-hover:text-primary transition-colors">
-                          {course.title}
-                        </h3>
-                        {course.description && (
-                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                            {course.description}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
+                        <h3 className="font-display font-semibold text-white group-hover:text-primary transition-colors line-clamp-1">{course.title}</h3>
+                        {course.description && <p className="mt-1 text-sm leading-6 text-white/45 line-clamp-2">{course.description}</p>}
+                        <div className="mt-3 flex items-center gap-3 text-xs text-white/30">
+                          <span className="inline-flex items-center gap-1">
                             <Play className="h-3 w-3" />
                             {totalModules} modules
                           </span>
                           {totalDuration > 0 && (
-                            <span className="flex items-center gap-1">
+                            <span className="inline-flex items-center gap-1">
                               <Clock className="h-3 w-3" />
                               {totalDuration} min
                             </span>
                           )}
-                          {course._count && course._count.quizzes > 0 && (
-                            <span className="flex items-center gap-1">
+                          {course._count?.quizzes > 0 && (
+                            <span className="inline-flex items-center gap-1">
                               <Award className="h-3 w-3" />
                               {course._count.quizzes} quizzes
                             </span>
                           )}
                         </div>
-                        {progress && (
-                          <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-                            <span className="text-xs text-muted-foreground">
-                              {progress.progressPct}% complete
-                            </span>
-                            <span className="flex items-center gap-1 text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                        {progress ? (
+                          <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-3">
+                            <span className="text-xs font-bold text-white/50">{progress.progressPct}% complete</span>
+                            <span className="inline-flex items-center gap-1 text-xs font-bold text-primary">
                               Continue <ArrowRight className="h-3 w-3" />
                             </span>
+                          </div>
+                        ) : (
+                          <div className="mt-4 flex items-center gap-1 text-xs font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                            Start course <ArrowRight className="h-3 w-3" />
                           </div>
                         )}
                       </div>
@@ -224,14 +136,12 @@ export default function EduLensPage() {
             })}
           </div>
         ) : (
-          <div className="text-center py-16">
-            <div className="p-4 rounded-full bg-muted w-fit mx-auto mb-4">
-              <BookOpen className="h-8 w-8 text-muted-foreground" />
+          <div className="text-center py-16 rounded-[20px] border border-white/10 bg-[#0b1428]/40">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.04] border border-white/10">
+              <BookOpen className="h-7 w-7 text-white/20" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">No courses available yet</h3>
-            <p className="text-sm text-muted-foreground">
-              Courses are being prepared. Check back soon!
-            </p>
+            <h3 className="mt-4 font-display font-semibold text-white">No courses yet</h3>
+            <p className="mt-1 text-sm text-white/40">Courses are being prepared. Check back soon!</p>
           </div>
         )}
       </div>
