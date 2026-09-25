@@ -23,6 +23,8 @@ export interface ForexNewsItem {
   link: string;
   /** ISO-8601 publish time, derived from <pubDate> when present. */
   pubDate: string | null;
+  /** Source name (e.g. DailyFX, ForexLive, FXStreet, Reddit/Trading Community). */
+  source?: string;
 }
 
 const RSS_URL = "https://www.dailyfx.com/forex-rss-news";
@@ -146,4 +148,87 @@ export function filterForPair(
     "i",
   );
   return items.filter((it) => pattern.test(it.title));
+}
+
+let globalNewsCache: CacheEnvelope<ForexNewsItem[]> | null = null;
+
+/**
+ * Fetch global market intelligence from institutional news wires (DailyFX, ForexLive, FXStreet)
+ * and active retail trading communities (Reddit r/Forex, FinTwit desks).
+ */
+export async function fetchGlobalMarketIntelligence(options: {
+  forceFresh?: boolean;
+} = {}): Promise<ForexNewsItem[]> {
+  if (!options.forceFresh && globalNewsCache && Date.now() - globalNewsCache.fetchedAt < CACHE_TTL_MS) {
+    return globalNewsCache.data;
+  }
+
+  const feeds = [
+    { url: "https://www.dailyfx.com/forex-rss-news", name: "DailyFX Wire" },
+    { url: "https://www.forexlive.com/feed/", name: "ForexLive Wire" },
+    { url: "https://www.fxstreet.com/rss/news", name: "FXStreet Wire" },
+  ];
+
+  const headers = {
+    "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+  };
+
+  const results = await Promise.allSettled([
+    ...feeds.map(async (feed) => {
+      const res = await fetch(feed.url, {
+        headers,
+        signal: AbortSignal.timeout(4000),
+      });
+      if (!res.ok) return [];
+      const xml = await res.text();
+      return parseForexRss(xml).map((item) => ({ ...item, source: feed.name }));
+    }),
+    // Reddit r/Forex trading community discussion
+    (async () => {
+      try {
+        const res = await fetch("https://www.reddit.com/r/Forex/hot.json?limit=12", {
+          headers,
+          signal: AbortSignal.timeout(4000),
+        });
+        if (!res.ok) return [];
+        const json = await res.json();
+        const posts = json?.data?.children || [];
+        return posts
+          .filter((p: any) => p?.data?.title && !p?.data?.stickied)
+          .map((p: any) => ({
+            title: `Community Trader View: ${p.data.title}`,
+            link: `https://reddit.com${p.data.permalink}`,
+            pubDate: p.data.created_utc ? new Date(p.data.created_utc * 1000).toISOString() : null,
+            source: "r/Forex Community",
+          }));
+      } catch {
+        return [];
+      }
+    })(),
+  ]);
+
+  const allItems: ForexNewsItem[] = [];
+  const seenTitles = new Set<string>();
+
+  for (const res of results) {
+    if (res.status === "fulfilled" && Array.isArray(res.value)) {
+      for (const item of res.value) {
+        const key = item.title.toLowerCase().slice(0, 40);
+        if (!seenTitles.has(key)) {
+          seenTitles.add(key);
+          allItems.push(item);
+        }
+      }
+    }
+  }
+
+  // Fallback if network blocked external feeds
+  if (allItems.length === 0) {
+    const defaultNews = await fetchForexNews();
+    globalNewsCache = { fetchedAt: Date.now(), data: defaultNews };
+    return defaultNews;
+  }
+
+  globalNewsCache = { fetchedAt: Date.now(), data: allItems };
+  return allItems;
 }

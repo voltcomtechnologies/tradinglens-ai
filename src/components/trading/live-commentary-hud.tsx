@@ -18,6 +18,9 @@ import {
   CheckCircle2,
   AlertCircle,
   HelpCircle,
+  Clock,
+  RotateCw,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GeminiRealtimeClient, type GeminiStatus } from "@/lib/gemini-realtime";
@@ -47,7 +50,8 @@ export function LiveCommentaryHud({
   const [commentaryScript, setCommentaryScript] = useState<string>("");
   const [technicalSummary, setTechnicalSummary] = useState<string>("");
   const [fundamentalSummary, setFundamentalSummary] = useState<string>("");
-  const [headlines, setHeadlines] = useState<Array<{ title: string; link: string }>>([]);
+  const [communitySentiment, setCommunitySentiment] = useState<string>("");
+  const [headlines, setHeadlines] = useState<Array<{ title: string; link: string; source?: string }>>([]);
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
   const [showKeyModal, setShowKeyModal] = useState(false);
   const [customApiKey, setCustomApiKey] = useState("");
@@ -56,9 +60,26 @@ export function LiveCommentaryHud({
   const [showTranscript, setShowTranscript] = useState(false);
   const [isFallbackMode, setIsFallbackMode] = useState(false);
 
+  // 5-Minute automated update & repetition state
+  const [secondsRemaining, setSecondsRemaining] = useState(300);
+  const [autoCycleEnabled, setAutoCycleEnabled] = useState(true);
+  const [isRepeatedBriefing, setIsRepeatedBriefing] = useState(false);
+
   const clientRef = useRef<GeminiRealtimeClient | null>(null);
   const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
   const prevSymbolRef = useRef(symbol);
+
+  // Stored references to check if new information arrived over the 5-minute cycle
+  const lastCommentaryScriptRef = useRef<string>("");
+  const lastPriceRef = useRef<number | null>(null);
+  const lastSignalTypeRef = useRef<string | null>(null);
+  const lastHeadlinesRef = useRef<string[]>([]);
+
+  const formatTime = (secs: number) => {
+    const mins = Math.floor(secs / 60);
+    const rem = secs % 60;
+    return `${mins.toString().padStart(2, "0")}:${rem.toString().padStart(2, "0")}`;
+  };
 
   // Natural browser speech fallback — strictly used when Gemini Realtime is not available
   const speakWithBrowserTts = useCallback(
@@ -104,11 +125,15 @@ export function LiveCommentaryHud({
     [isMuted]
   );
 
-  // Fetch Grok technical + fundamental analysis and speak it
+  // Fetch Grok technical + global fundamental & trading community analysis and speak it
   const generateAndSpeakCommentary = useCallback(
-    async (targetSymbol: string, forceFallback = false) => {
+    async (targetSymbol: string, forceFallback = false, is5MinCycle = false) => {
       setIsLoadingAnalysis(true);
-      setStatusDetail("Synthesizing Grok fundamental & technical analysis...");
+      setStatusDetail(
+        is5MinCycle
+          ? "Checking for new global Bloomberg wires, community chatter & price shifts..."
+          : "Synthesizing global Bloomberg, community & technical analysis..."
+      );
 
       try {
         const res = await fetch("/api/trading/chart-commentary", {
@@ -122,6 +147,11 @@ export function LiveCommentaryHud({
             regime: strategyResult.marketRegime,
             activeSignal: strategyResult.activeSignal,
             signalsCount: strategyResult.signals.length,
+            lastCommentaryScript: lastCommentaryScriptRef.current,
+            lastPrice: lastPriceRef.current,
+            lastSignalType: strategyResult.activeSignal?.type || null,
+            lastHeadlines: lastHeadlinesRef.current,
+            is5MinCycle,
           }),
         });
 
@@ -130,7 +160,18 @@ export function LiveCommentaryHud({
           setCommentaryScript(data.commentaryScript);
           setTechnicalSummary(data.technicalSummary);
           setFundamentalSummary(data.fundamentalSummary);
+          setCommunitySentiment(data.communitySentiment || "");
           setHeadlines(data.headlines || []);
+          setIsRepeatedBriefing(!!data.isRepeated);
+
+          // Update previous references for next 5-minute cycle comparison
+          lastCommentaryScriptRef.current = data.commentaryScript;
+          lastPriceRef.current = currentPrice;
+          lastSignalTypeRef.current = strategyResult.activeSignal?.type || null;
+          lastHeadlinesRef.current = (data.headlines || []).map((h: any) => h.title);
+
+          // Reset the 5-minute countdown clock
+          setSecondsRemaining(300);
 
           setTranscript((prev) => [
             ...prev,
@@ -189,6 +230,24 @@ export function LiveCommentaryHud({
     },
     [currentPrice, priceChange, timeframe, strategyResult, speakWithBrowserTts]
   );
+
+  // 5-Minute automated briefing interval timer
+  useEffect(() => {
+    if (status === "disconnected" || !autoCycleEnabled) return;
+
+    const timer = setInterval(() => {
+      setSecondsRemaining((prev) => {
+        if (prev <= 1) {
+          // 5 minutes reached: check for new information and repeat if none
+          generateAndSpeakCommentary(symbol, isFallbackMode, true);
+          return 300;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [status, autoCycleEnabled, symbol, isFallbackMode, generateAndSpeakCommentary]);
 
   // Initialize or connect Gemini Realtime Client
   const startRealtimeSession = useCallback(async () => {
@@ -259,7 +318,7 @@ Always balance technical signals (EMA, Bollinger, RSI, SL, TP) with fundamental 
 
       setIsFallbackMode(false);
       setStatus("ready");
-      setStatusDetail("Gemini 3.1 Flash Live (Aoede) active");
+      setStatusDetail("Gemini 3.1 Flash Live (Aoede) active • 5m automated cycle ON");
 
       // Trigger initial commentary exclusively through Gemini Aoede
       await generateAndSpeakCommentary(symbol, false);
@@ -285,6 +344,8 @@ Always balance technical signals (EMA, Bollinger, RSI, SL, TP) with fundamental 
     setStatusDetail("Live commentary paused");
     setIsMicOn(false);
     setIsFallbackMode(false);
+    setSecondsRemaining(300);
+    setIsRepeatedBriefing(false);
   };
 
   const toggleMic = async () => {
@@ -380,6 +441,26 @@ Always balance technical signals (EMA, Bollinger, RSI, SL, TP) with fundamental 
 
         {/* Audio Waveform & Action Controls */}
         <div className="flex items-center gap-2">
+          {/* 5-Minute Auto-Briefing Countdown */}
+          {status !== "disconnected" && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-cyan-400/20 bg-cyan-950/40 text-[11px] font-mono text-cyan-300">
+              <Clock className="h-3.5 w-3.5 text-cyan-400 animate-pulse" />
+              <span>Next: {formatTime(secondsRemaining)}</span>
+              <button
+                onClick={() => setAutoCycleEnabled(!autoCycleEnabled)}
+                className={cn(
+                  "ml-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase transition-colors cursor-pointer",
+                  autoCycleEnabled
+                    ? "bg-cyan-500/20 text-cyan-200 hover:bg-cyan-500/30"
+                    : "bg-white/10 text-white/40 hover:bg-white/20"
+                )}
+                title={autoCycleEnabled ? "5-minute interval active. Click to pause" : "Auto-cycle paused. Click to resume"}
+              >
+                {autoCycleEnabled ? "5m Auto" : "Paused"}
+              </button>
+            </div>
+          )}
+
           {/* Animated Waveform Visualizer */}
           {status === "speaking" || isMicOn ? (
             <div className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-cyan-400/20 bg-cyan-400/5">
@@ -475,7 +556,7 @@ Always balance technical signals (EMA, Bollinger, RSI, SL, TP) with fundamental 
         </div>
       </div>
 
-      {/* Live Narrative Briefing Card */}
+      {/* Live Narrative Briefing Cards */}
       <div className="mt-3.5 grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Technical Confluence Section */}
         <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
@@ -487,17 +568,33 @@ Always balance technical signals (EMA, Bollinger, RSI, SL, TP) with fundamental 
           </p>
         </div>
 
-        {/* Fundamental Analysis Section */}
+        {/* Global Wires & Community Intelligence Section */}
         <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-300 mb-1.5">
-            <Globe className="h-3.5 w-3.5" /> Fundamental & Macro Drivers
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-300">
+              <Globe className="h-3.5 w-3.5" /> Global Wires & Community Intel
+            </div>
+            <span className="text-[10px] text-white/40 font-mono">Bloomberg • FinTwit • Reddit</span>
           </div>
           <p className="text-xs text-white/80 leading-relaxed">
-            {fundamentalSummary || `Tracking central bank monetary policy differentials and high-impact economic releases for ${symbol}.`}
+            {fundamentalSummary || `Tracking global central bank monetary policy differentials and news for ${symbol}.`}
           </p>
+          {communitySentiment && (
+            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded-md px-2 py-1">
+              <Users className="h-3 w-3 shrink-0" />
+              <span className="truncate">{communitySentiment}</span>
+            </div>
+          )}
           {headlines.length > 0 && (
-            <div className="mt-2 text-[11px] text-white/50 border-t border-white/5 pt-1.5 truncate">
-              Headline: &ldquo;{headlines[0].title}&rdquo;
+            <div className="mt-2 space-y-1 border-t border-white/5 pt-1.5">
+              {headlines.slice(0, 2).map((h, i) => (
+                <div key={i} className="text-[11px] text-white/60 truncate flex items-center gap-1.5">
+                  <span className="px-1 py-0.5 rounded text-[9px] font-bold bg-white/10 text-white/70 shrink-0">
+                    {h.source || "Global Wire"}
+                  </span>
+                  <span className="truncate">&ldquo;{h.title}&rdquo;</span>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -505,16 +602,24 @@ Always balance technical signals (EMA, Bollinger, RSI, SL, TP) with fundamental 
 
       {/* Spoken Commentary Script / Transcript Toggle */}
       {commentaryScript && (
-        <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between">
-          <p className="text-xs text-white/70 italic line-clamp-2 pr-4">
-            &ldquo;{commentaryScript}&rdquo;
-          </p>
-          <button
-            onClick={() => setShowTranscript(!showTranscript)}
-            className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 shrink-0 cursor-pointer"
-          >
-            {showTranscript ? "Hide Transcript" : "Full Transcript"}
-          </button>
+        <div className="mt-3 pt-2 border-t border-white/5">
+          {isRepeatedBriefing && (
+            <div className="mb-2 flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-amber-400/30 bg-amber-400/10 text-[11px] text-amber-200">
+              <RotateCw className="h-3 w-3 text-amber-300 shrink-0" />
+              <span>Market unchanged over past 5 min • Repeating previous briefing</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-white/70 italic line-clamp-2 pr-4">
+              &ldquo;{commentaryScript}&rdquo;
+            </p>
+            <button
+              onClick={() => setShowTranscript(!showTranscript)}
+              className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 shrink-0 cursor-pointer"
+            >
+              {showTranscript ? "Hide Transcript" : "Full Transcript"}
+            </button>
+          </div>
         </div>
       )}
 

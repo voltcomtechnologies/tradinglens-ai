@@ -1,13 +1,19 @@
 import { describe, it, expect, vi } from "vitest";
 
-vi.mock("@/lib/rss/forex-news", () => ({
-  fetchForexNews: vi.fn().mockResolvedValue([
+const { mockNews } = vi.hoisted(() => ({
+  mockNews: [
     {
       title: "EUR/USD advances as ECB remains hawkish while Fed considers rate cuts",
       link: "https://example.com/eurusd",
       pubDate: "2026-09-24T12:00:00Z",
+      source: "Bloomberg Wire",
     },
-  ]),
+  ],
+}));
+
+vi.mock("@/lib/rss/forex-news", () => ({
+  fetchForexNews: vi.fn().mockResolvedValue(mockNews),
+  fetchGlobalMarketIntelligence: vi.fn().mockResolvedValue(mockNews),
   filterForPair: vi.fn().mockImplementation((items) => items),
 }));
 
@@ -60,5 +66,34 @@ describe("/api/trading/chart-commentary route", () => {
     expect(data.commentaryScript).toContain("EUR/USD is testing key resistance");
     expect(data.technicalSummary).toContain("BUY signal active");
     expect(data.headlines.length).toBeGreaterThan(0);
+  });
+
+  it("repeats previous commentary when no new information arrives after 5 minutes", async () => {
+    const prevScript = "EUR/USD is consolidating tightly at 1.0850 awaiting key central bank releases.";
+    const req = new Request("http://localhost:3000/api/trading/chart-commentary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        symbol: "EURUSD",
+        currentPrice: 1.0850,
+        priceChange: 0.05,
+        timeframe: "1H",
+        regime: { trend: "NEUTRAL" },
+        activeSignal: null,
+        signalsCount: 0,
+        lastCommentaryScript: prevScript,
+        lastPrice: 1.0850,
+        lastSignalType: null,
+        lastHeadlines: [mockNews[0].title],
+        is5MinCycle: true,
+      }),
+    });
+
+    const res = await POST(req);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(data.isRepeated).toBe(true);
+    expect(data.commentaryScript).toContain("Repeating our previous desk briefing");
+    expect(data.commentaryScript).toContain(prevScript);
   });
 });

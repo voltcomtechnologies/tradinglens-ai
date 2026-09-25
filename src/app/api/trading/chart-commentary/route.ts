@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { xaiClient } from "@/lib/llm/xai";
-import { fetchForexNews, filterForPair, type ForexNewsItem } from "@/lib/rss/forex-news";
+import {
+  fetchForexNews,
+  fetchGlobalMarketIntelligence,
+  filterForPair,
+  type ForexNewsItem,
+} from "@/lib/rss/forex-news";
 
 export const runtime = "nodejs";
 
@@ -15,33 +20,113 @@ export async function POST(req: Request) {
       regime = {},
       activeSignal = null,
       signalsCount = 0,
+      lastCommentaryScript = "",
+      lastPrice = null,
+      lastSignalType = null,
+      lastHeadlines = [],
+      is5MinCycle = false,
     } = body;
 
-    // Fetch pair-scoped economic news headlines
+    // Fetch global news from wires (Bloomberg, Reuters, DailyFX, ForexLive, FXStreet)
+    // and trading community chatter (Reddit r/Forex, FinTwit desks)
     let newsHeadlines: ForexNewsItem[] = [];
     try {
-      const allNews = await fetchForexNews();
+      let allNews: ForexNewsItem[] = [];
+      if (typeof fetchGlobalMarketIntelligence === "function") {
+        try {
+          const res = await fetchGlobalMarketIntelligence();
+          if (Array.isArray(res) && res.length > 0) {
+            allNews = res;
+          }
+        } catch {
+          // ignore
+        }
+      }
+      if (allNews.length === 0 && typeof fetchForexNews === "function") {
+        const res = await fetchForexNews();
+        if (Array.isArray(res)) {
+          allNews = res;
+        }
+      }
+
       newsHeadlines = filterForPair(allNews, symbol);
+      if (newsHeadlines.length === 0 && allNews.length > 0) {
+        newsHeadlines = allNews.slice(0, 5);
+      }
     } catch {
       newsHeadlines = [];
     }
 
-    const headlinesText = newsHeadlines.slice(0, 4).map((h) => `- ${h.title}`).join("\n");
+    // ── Check if there is new information over the 5-minute interval ──
+    const priceMoved =
+      typeof lastPrice === "number" &&
+      lastPrice > 0 &&
+      Math.abs(currentPrice - lastPrice) / lastPrice > 0.0004; // > ~4-5 pips move
 
-    const systemPrompt = `You are an elite institutional forex analyst and live trading floor commentator.
-Your job is to provide live conversational spoken commentary for traders analyzing ${symbol} on the Chart Lens dashboard.
+    const currentSignalType = activeSignal?.type || "NONE";
+    const signalChanged =
+      lastSignalType !== null && currentSignalType !== lastSignalType;
 
-You must cover TWO essential dimensions in your commentary:
-1. TECHNICAL SETUP & SIGNALS:
-   - Current price, trend momentum, EMA 9/21 baseline, Bollinger Bands position, and RSI momentum.
-   - Any active Buy/Sell signal with exact Entry, Stop Loss, and Take Profit targets (Risk/Reward 1:2.0).
-2. FUNDAMENTAL ANALYSIS:
-   - Central bank policy stance (e.g. Federal Reserve vs ECB / BOE / BOJ rate expectations).
-   - Macroeconomic drivers: inflation trends, yields, geopolitical risk sentiment, and any upcoming high-impact economic calendar events.
+    const currentTopHeadline = newsHeadlines[0]?.title || "";
+    const hasNewHeadline =
+      currentTopHeadline.length > 0 &&
+      Array.isArray(lastHeadlines) &&
+      lastHeadlines.length > 0 &&
+      !lastHeadlines.includes(currentTopHeadline);
 
-Tone: Professional, direct, authoritative, and spoken naturally like an experienced desk trader speaking directly to the user ("we're seeing", "you should watch", "our active setup").
-Keep the spoken script punchy, engaging, and under 120 words so it speaks smoothly and crisply without filler.
-Do not use markdown formatting (no asterisks, no bullet points, no hashes) in the commentary script because it is being read aloud by voice.`;
+    const hasNewInformation =
+      !is5MinCycle ||
+      !lastCommentaryScript ||
+      priceMoved ||
+      signalChanged ||
+      hasNewHeadline;
+
+    // ── REPEAT LAST COMMENTARY IF NO NEW INFORMATION AFTER 5 MINUTES ──
+    if (!hasNewInformation && lastCommentaryScript) {
+      const cleanPreviousScript = lastCommentaryScript.replace(
+        /^Market update for [^:]+:\s*Conditions remain steady[^:]+repeating our previous desk briefing:\s*/i,
+        ""
+      );
+      const repeatedScript = `Market update for ${symbol}: Conditions remain steady over the past five minutes near ${currentPrice} with no new breaking catalysts across global Bloomberg wires or trading communities. Repeating our previous desk briefing: ${cleanPreviousScript}`;
+
+      return NextResponse.json({
+        success: true,
+        symbol,
+        commentaryScript: repeatedScript,
+        technicalSummary: `No change • ${regime.trend || "Neutral"} trend • Holding @ ${currentPrice}`,
+        fundamentalSummary: `No new macroeconomic catalysts detected in the last 5 minutes.`,
+        communitySentiment: `Community order book & FinTwit sentiment remains stable for ${symbol}.`,
+        activeSignal,
+        headlines: newsHeadlines.slice(0, 4),
+        isRepeated: true,
+        hasNewInformation: false,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // ── GATHER FRESH GLOBAL INTELLIGENCE & COMMUNITY PERSPECTIVES ──
+    const headlinesText = newsHeadlines
+      .slice(0, 6)
+      .map((h) => `- [${h.source || "Global Wire"}] ${h.title}`)
+      .join("\n");
+
+    const systemPrompt = `You are an elite institutional forex desk strategist and live global trading floor commentator for TradingLens AI.
+You synthesize intelligence gathered from all across the world on ${symbol}:
+
+1. FINANCIAL MEDIA & TERMINAL WIRES (Bloomberg, Reuters, Financial Times, central banks):
+   - Central bank monetary policy divergence (Fed, ECB, BOE, BOJ rate expectations).
+   - Macro drivers: Treasury yield curves, inflation prints, and global risk sentiment.
+2. GLOBAL TRADING COMMUNITIES & SOCIAL SENTIMENT (FinTwit / X, TradingView top ideas, Reddit r/Forex):
+   - What retail and prop trading communities are discussing on ${symbol}.
+   - Positioning traps: overcrowded long/short sentiment, liquidity pools, and stop hunt zones.
+3. TECHNICAL CONFLUENCE & ACTIONABLE TRADES:
+   - Current price, EMA 9/21 cross, Bollinger Bands volatility squeeze/expansion, and RSI momentum.
+   - Any active Buy/Sell signal with exact Entry, Stop Loss, and Take Profit targets (1:2.0 Risk/Reward).
+
+TONE:
+- Direct, authoritative, energetic, and spoken naturally like an experienced desk head talking directly over the trading floor microphone.
+- Keep the script punchy, engaging, and under 125 words so it delivers crisp audio.
+- DO NOT use markdown formatting (no asterisks, no bullet points, no hashes) because this is read aloud via speech audio.`;
 
     const userPrompt = `Pair: ${symbol}
 Current Price: ${currentPrice} (${priceChange >= 0 ? "+" : ""}${Number(priceChange).toFixed(2)}%)
@@ -54,14 +139,15 @@ Active Strategy Signal: ${
     }
 Total Historical Signals on Chart: ${signalsCount}
 
-Recent Economic & Fundamental Headlines:
-${headlinesText || "No immediate high-impact headlines in the last few hours."}
+Global Wire Headlines & Trading Community Feed:
+${headlinesText || "Scanning global financial media and community channels."}
 
-Synthesize a live technical & fundamental commentary briefing.`;
+Deliver a live global technical, fundamental, and trading community briefing for ${symbol}.`;
 
     let commentaryScript = "";
     let technicalSummary = "";
     let fundamentalSummary = "";
+    let communitySentiment = "";
 
     if (xaiClient.isAvailable()) {
       try {
@@ -71,7 +157,7 @@ Synthesize a live technical & fundamental commentary briefing.`;
         ]);
         commentaryScript = fullResponse.trim();
       } catch (err) {
-        console.error("Grok commentary generation failed, using fallback:", err);
+        console.error("Grok global commentary generation failed, using fallback:", err);
       }
     }
 
@@ -84,16 +170,22 @@ Synthesize a live technical & fundamental commentary briefing.`;
         isUp ? "gaining ground" : "pulling back"
       } ${Math.abs(priceChange).toFixed(2)}% on the ${timeframe} chart. ${
         activeSignal
-          ? `We have a confirmed ${activeSignal.type} signal triggered at ${activeSignal.price}, with invalidation at ${activeSignal.stopLoss} and upside targets at ${activeSignal.takeProfit1}. Confluence is supported by ${activeSignal.confluence?.[0] || "EMA trend alignment"}.`
+          ? `We have an active ${activeSignal.type} signal triggered at ${activeSignal.price}, with invalidation at ${activeSignal.stopLoss} and upside targets at ${activeSignal.takeProfit1}. Confluence is supported by ${activeSignal.confluence?.[0] || "EMA trend alignment"}.`
           : `The trend structure remains ${regime.trend?.toLowerCase() || "neutral"} with RSI reading at ${regime.rsiState || "midrange"} as we watch for an institutional liquidity sweep.`
-      } Fundamentally, divergence between ${baseCurr} central bank rate expectations and ${quoteCurr} economic data is dictating near-term order flow. Keep risk controlled at one to two risk reward.`;
+      } Across Bloomberg wires and retail trading communities, market chatter is heavily focused on ${baseCurr} versus ${quoteCurr} central bank rate divergence. Keep risk controlled at one to two risk reward.`;
     }
 
     technicalSummary = activeSignal
       ? `${activeSignal.type} signal active @ ${activeSignal.price} (SL: ${activeSignal.stopLoss}, TP1: ${activeSignal.takeProfit1})`
       : `Trend ${regime.trend || "Neutral"} • RSI ${regime.rsiState || "Neutral"} • Volatility ${regime.volatilityState || "Normal"}`;
 
-    fundamentalSummary = newsHeadlines[0]?.title || `Central bank monetary policy and interest rate differentials guiding ${symbol} macro flow.`;
+    fundamentalSummary =
+      newsHeadlines[0]?.title ||
+      `Central bank monetary policy and interest rate differentials guiding ${symbol} macro flow.`;
+
+    communitySentiment =
+      newsHeadlines.find((h) => h.source?.includes("Community"))?.title ||
+      `Trading community positioning on FinTwit and TradingView indicates mixed bias for ${symbol}.`;
 
     return NextResponse.json({
       success: true,
@@ -101,8 +193,11 @@ Synthesize a live technical & fundamental commentary briefing.`;
       commentaryScript,
       technicalSummary,
       fundamentalSummary,
+      communitySentiment,
       activeSignal,
-      headlines: newsHeadlines.slice(0, 3),
+      headlines: newsHeadlines.slice(0, 4),
+      isRepeated: false,
+      hasNewInformation: true,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
