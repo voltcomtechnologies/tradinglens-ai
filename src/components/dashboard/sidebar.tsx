@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import {
   BookOpen,
   Brain,
@@ -205,18 +206,17 @@ export function DashboardSidebar({ user, sidebarOpen, onToggle }: SidebarProps) 
               </div>
             )}
           </div>
-          <form action="/api/auth/signout" method="POST" className="mt-2">
-            <button
-              type="submit"
-              className={cn(
-                "flex w-full items-center gap-2 rounded-full px-3 py-2.5 text-xs font-medium text-white/40 hover:text-red-300 hover:bg-red-500/10 transition-colors",
-                collapsed && "justify-center"
-              )}
-            >
-              <LogOut className="h-4 w-4 shrink-0" />
-              {!collapsed && <span>Sign Out</span>}
-            </button>
-          </form>
+          <button
+            type="button"
+            onClick={() => signOut({ callbackUrl: "/" })}
+            className={cn(
+              "flex w-full items-center gap-2 rounded-full px-3 py-2.5 text-xs font-medium text-white/40 hover:text-red-300 hover:bg-red-500/10 transition-colors mt-2",
+              collapsed && "justify-center"
+            )}
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>Sign Out</span>}
+          </button>
         </div>
       </aside>
     </>

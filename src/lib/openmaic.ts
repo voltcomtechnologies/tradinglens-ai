@@ -112,7 +112,9 @@ export function buildOpenmaicClassroomUrl(params: {
   const baseUrl =
     params.baseUrl ||
     process.env.NEXT_PUBLIC_OPENMAIC_URL ||
-    "http://localhost:3001";
+    (process.env.NODE_ENV === "development"
+      ? "http://localhost:3001"
+      : "https://classroom.tradinglensai.com");
   const requirement = renderOutlineToRequirement(params.outline);
   const r = b64urlEncode(requirement);
   const u = new URL(baseUrl);

@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { auth, signOut } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,7 +72,12 @@ export default async function AdminDashboardPage() {
           <div className="flex flex-wrap gap-3">
             <Link href="/dashboard/learn" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white hover:bg-white hover:text-[#050a18] transition-colors">Manage Courses</Link>
             <Link href="/dashboard/subscription" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white hover:bg-white hover:text-[#050a18] transition-colors">Subscriptions</Link>
-            <form action="/api/auth/signout" method="POST">
+            <form
+              action={async () => {
+                "use server";
+                await signOut({ redirectTo: "/" });
+              }}
+            >
               <button type="submit" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white/60 hover:text-red-300 hover:border-red-400/20 hover:bg-red-400/10 transition-colors">
                 <LogOut className="h-4 w-4" /> Sign Out
               </button>

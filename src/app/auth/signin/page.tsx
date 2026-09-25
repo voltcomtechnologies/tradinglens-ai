@@ -70,7 +70,7 @@ function SignInForm() {
         </div>
 
         {/* Error messages */}
-        {(error || errorMessage) && (
+        {((error && error !== "MissingCSRF" && error !== "SessionRequired") || errorMessage) && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}

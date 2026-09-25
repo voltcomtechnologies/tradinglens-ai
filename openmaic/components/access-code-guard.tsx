@@ -38,13 +38,13 @@ export function AccessCodeGuard({ children }: { children: ReactNode }) {
 
   return (
     <>
-      {needsAuth && (
-        <AccessCodeModal
-          open={true}
-          onSuccess={() => setStatus((s) => ({ ...s, authenticated: true }))}
-        />
-      )}
-      {children}
+      <AccessCodeModal
+        open={needsAuth}
+        onSuccess={() => setStatus((s) => ({ ...s, authenticated: true }))}
+      />
+      <div id="openmaic-app-content" className="contents">
+        {children}
+      </div>
     </>
   );
 }

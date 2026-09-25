@@ -153,6 +153,7 @@ describe("/api/openmaic-token", () => {
       expect(data.token).toBe("mock-token");
       expect(data.limit).toBe(5);
       expect(data.used).toBe(1);
+      expect(data.classroomUrl).toBeDefined();
       expect(mockPrisma.courseAiGeneration.create).toHaveBeenCalledWith({
         data: {
           userId: "user-1",

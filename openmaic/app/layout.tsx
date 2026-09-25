@@ -37,9 +37,11 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <I18nProvider>
-            <ServerProvidersInit />
-            <AccessCodeGuard>{children}</AccessCodeGuard>
-            <Toaster position="top-center" />
+            <div id="openmaic-root" className="min-h-screen">
+              <ServerProvidersInit />
+              <AccessCodeGuard>{children}</AccessCodeGuard>
+              <Toaster position="top-center" />
+            </div>
           </I18nProvider>
         </ThemeProvider>
       </body>

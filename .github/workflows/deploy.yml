@@ -1,0 +1,136 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip_classroom:
+        description: 'Skip OpenMAIC Classroom deployment'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  VPS_HOST: 170.9.42.34
+  VPS_USER: ubuntu
+  REMOTE_DIR: /var/www/tradinglens-ai
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js app
+        env:
+          NEXT_PUBLIC_OPENMAIC_URL: https://classroom.tradinglensai.com
+          NEXT_PUBLIC_LIVEKIT_URL: wss://trade-kvdgigav.livekit.cloud
+        run: npx next build
+
+      - name: Verify build
+        run: |
+          if [ ! -f .next/BUILD_ID ]; then
+            echo "❌ BUILD_ID not found — build is corrupt"
+            exit 1
+          fi
+          echo "✅ BUILD_ID: $(cat .next/BUILD_ID)"
+
+      - name: Compress build output
+        run: |
+          tar -czf .next-deploy.tar.gz .next
+          echo "📦 Archive size: $(du -sh .next-deploy.tar.gz | cut -f1)"
+
+      - name: Build OpenMAIC Classroom
+        if: ${{ github.event.inputs.skip_classroom != 'true' }}
+        working-directory: openmaic
+        run: |
+          if [ -f package.json ]; then
+            npm ci
+            npx next build
+            if [ -d .next/standalone ]; then
+              tar -czf ../.classroom-deploy.tar.gz .next/standalone .next/static
+              echo "📦 Classroom archive: $(du -sh ../.classroom-deploy.tar.gz | cut -f1)"
+            else
+              echo "⏭ No standalone build output"
+            fi
+          else
+            echo "⏭ No openmaic/package.json found"
+          fi
+        continue-on-error: true
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ env.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Upload build to VPS
+        run: |
+          scp -i ~/.ssh/deploy_key \
+            .next-deploy.tar.gz \
+            ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:${{ env.REMOTE_DIR }}/
+
+      - name: Deploy on VPS
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "\
+            cd ${{ env.REMOTE_DIR }} && \
+            pm2 stop tradinglens-web && \
+            rm -rf .next && \
+            tar -xzf .next-deploy.tar.gz && \
+            rm .next-deploy.tar.gz && \
+            pm2 restart tradinglens-web && \
+            pm2 reset tradinglens-web && \
+            pm2 save && \
+            echo '✅ tradinglens-web deployed'"
+
+      - name: Deploy OpenMAIC Classroom
+        if: ${{ github.event.inputs.skip_classroom != 'true' && hashFiles('.classroom-deploy.tar.gz') != '' }}
+        run: |
+          scp -i ~/.ssh/deploy_key \
+            .classroom-deploy.tar.gz \
+            ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:${{ env.REMOTE_DIR }}/openmaic/
+
+          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "\
+            cd ${{ env.REMOTE_DIR }}/openmaic && \
+            pm2 stop openmaic-classroom && \
+            rm -rf .next && \
+            tar -xzf .classroom-deploy.tar.gz && \
+            rm .classroom-deploy.tar.gz && \
+            pm2 restart openmaic-classroom && \
+            pm2 save && \
+            echo '✅ openmaic-classroom deployed'"
+
+      - name: Verify deployment
+        run: |
+          sleep 5
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://tradinglensai.com)
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ https://tradinglensai.com → HTTP $HTTP_CODE"
+          else
+            echo "⚠️ https://tradinglensai.com → HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: Show PM2 status
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "pm2 list" || true
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

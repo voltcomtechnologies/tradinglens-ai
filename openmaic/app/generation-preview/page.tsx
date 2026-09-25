@@ -1225,7 +1225,7 @@ function GenerationPreviewContent() {
   // Still loading session from sessionStorage
   if (!sessionLoaded) {
     return (
-      <div className="min-h-[100dvh] w-full bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center p-4">
+      <div key="session-loading" className="min-h-[100dvh] w-full bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center p-4">
         <div className="text-center text-muted-foreground">
           <div className="size-8 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto" />
         </div>
@@ -1236,7 +1236,7 @@ function GenerationPreviewContent() {
   // No session found
   if (!session) {
     return (
-      <div className="min-h-[100dvh] w-full bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center p-4">
+      <div key="session-not-found" className="min-h-[100dvh] w-full bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex items-center justify-center p-4">
         <Card className="p-8 max-w-md w-full">
           <div className="text-center space-y-4">
             <AlertCircle className="size-12 text-muted-foreground mx-auto" />
@@ -1268,7 +1268,7 @@ function GenerationPreviewContent() {
     const editorOutlines = session.sceneOutlines ?? streamingOutlines ?? [];
 
     return (
-      <div className="min-h-[100dvh] w-full bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex flex-col items-center p-4 relative overflow-hidden">
+      <div key="session-reviewing" className="min-h-[100dvh] w-full bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex flex-col items-center p-4 relative overflow-hidden">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1337,7 +1337,7 @@ function GenerationPreviewContent() {
   }
 
   return (
-    <div className="min-h-[100dvh] w-full bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex flex-col items-center justify-center p-4 relative overflow-hidden text-center">
+    <div key="session-preview-main" className="min-h-[100dvh] w-full bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 flex flex-col items-center justify-center p-4 relative overflow-hidden text-center">
       {/* Background Decor */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
         <div
@@ -1391,28 +1391,30 @@ function GenerationPreviewContent() {
             <div className="flex-1 flex flex-col items-center justify-center w-full space-y-8 mt-4">
               {/* Icon / Visualizer Container */}
               <div className="relative size-48 flex items-center justify-center">
-                <AnimatePresence mode="popLayout">
+                <AnimatePresence mode="wait">
                   {error ? (
                     <motion.div
-                      key="error"
+                      key="visualizer-error"
                       initial={{ scale: 0.5, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.5, opacity: 0 }}
                       className="size-32 rounded-full bg-red-500/10 flex items-center justify-center border-2 border-red-500/20"
                     >
                       <AlertCircle className="size-16 text-red-500" />
                     </motion.div>
                   ) : isComplete ? (
                     <motion.div
-                      key="complete"
+                      key="visualizer-complete"
                       initial={{ scale: 0.5, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.5, opacity: 0 }}
                       className="size-32 rounded-full bg-green-500/10 flex items-center justify-center border-2 border-green-500/20"
                     >
                       <CheckCircle2 className="size-16 text-green-500" />
                     </motion.div>
                   ) : (
                     <motion.div
-                      key={activeStep.id}
+                      key={activeStep?.id || 'visualizer-step'}
                       initial={{ scale: 0.8, opacity: 0, filter: 'blur(10px)' }}
                       animate={{ scale: 1, opacity: 1, filter: 'blur(0px)' }}
                       exit={{ scale: 1.2, opacity: 0, filter: 'blur(10px)' }}
@@ -1463,6 +1465,7 @@ function GenerationPreviewContent() {
                 <AnimatePresence>
                   {truncationWarnings.length > 0 && !error && !isComplete && (
                     <motion.div
+                      key="truncation-warning"
                       initial={{ opacity: 0, scale: 0 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0 }}
@@ -1522,11 +1525,13 @@ function GenerationPreviewContent() {
 
         {/* Footer Action */}
         <div className="h-16 flex items-center justify-center w-full">
-          <AnimatePresence>
+          <AnimatePresence mode="wait">
             {error ? (
               <motion.div
+                key="footer-action-error"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
                 className="w-full max-w-xs"
               >
                 <Button size="lg" variant="outline" className="w-full h-12" onClick={goBackToHome}>
@@ -1535,8 +1540,10 @@ function GenerationPreviewContent() {
               </motion.div>
             ) : isOutlineReady ? null : !isComplete ? (
               <motion.div
+                key="footer-action-working"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 className="flex items-center gap-3 text-sm text-muted-foreground/50 font-medium uppercase tracking-widest"
               >
                 <Sparkles className="size-3 animate-pulse" />

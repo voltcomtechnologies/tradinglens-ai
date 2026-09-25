@@ -187,6 +187,13 @@ export async function POST(request: Request) {
       },
     });
 
+    const classroomUrl =
+      process.env.OPENMAIC_URL ||
+      process.env.NEXT_PUBLIC_OPENMAIC_URL ||
+      (process.env.NODE_ENV === "development"
+        ? "http://localhost:3001"
+        : "https://classroom.tradinglensai.com");
+
     return NextResponse.json({
       token: signed.token,
       expiresInSeconds: signed.expiresInSeconds,
@@ -194,6 +201,7 @@ export async function POST(request: Request) {
       limit: DAILY_LIMIT,
       used: usedToday + 1,
       isUnlimited: isAdmin,
+      classroomUrl,
     });
   } catch (error) {
     console.error("[openmaic-token] POST error:", error);

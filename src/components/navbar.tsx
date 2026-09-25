@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { motion, AnimatePresence, useScroll, useSpring } from "framer-motion";
 import {
   ChartCandlestick,
@@ -232,15 +233,14 @@ export function Navbar({ user }: NavbarProps) {
                         <User className="h-4 w-4 text-white/40" /> Profile
                       </Link>
                       <div className="my-1 h-px bg-white/10" />
-                      <form action="/api/auth/signout" method="POST">
-                        <button
-                          type="submit"
-                          role="menuitem"
-                          className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-red-300 hover:bg-red-500/10 transition-colors"
-                        >
-                          <LogOut className="h-4 w-4" /> Sign Out
-                        </button>
-                      </form>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => signOut({ callbackUrl: "/" })}
+                        className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-red-300 hover:bg-red-500/10 transition-colors"
+                      >
+                        <LogOut className="h-4 w-4" /> Sign Out
+                      </button>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -324,14 +324,16 @@ export function Navbar({ user }: NavbarProps) {
                   >
                     <LayoutDashboard className="h-4 w-4" /> Dashboard
                   </Link>
-                  <form action="/api/auth/signout" method="POST">
-                    <button
-                      type="submit"
-                      className="flex w-full items-center gap-2.5 rounded-2xl px-4 py-3.5 text-sm text-red-300 hover:bg-red-500/10"
-                    >
-                      <LogOut className="h-4 w-4" /> Sign Out
-                    </button>
-                  </form>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileOpen(false);
+                      signOut({ callbackUrl: "/" });
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-2xl px-4 py-3.5 text-sm text-red-300 hover:bg-red-500/10"
+                  >
+                    <LogOut className="h-4 w-4" /> Sign Out
+                  </button>
                 </>
               ) : (
                 <div className="grid grid-cols-2 gap-2 p-1">

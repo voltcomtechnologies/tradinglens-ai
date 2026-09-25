@@ -16,6 +16,7 @@ export type TokenResponse = {
   limit: number;
   used: number;
   isUnlimited?: boolean;
+  classroomUrl?: string;
 };
 
 // Dedicated axios instance for the OpenMAIC token endpoints. The interceptor
@@ -68,6 +69,7 @@ export function useLaunchAiclassroom() {
         outline,
         token: tokenResp.data.token,
         courseSlug,
+        baseUrl: tokenResp.data.classroomUrl,
       });
       return { url, used: tokenResp.data.used, limit: tokenResp.data.limit };
     },

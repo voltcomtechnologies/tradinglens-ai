@@ -56,6 +56,7 @@ export function AccessCodeModal({ open, onSuccess }: AccessCodeModalProps) {
     <AnimatePresence>
       {open && (
         <motion.div
+          key="access-code-modal-overlay"
           className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -178,6 +179,7 @@ export function AccessCodeModal({ open, onSuccess }: AccessCodeModalProps) {
                 <AnimatePresence mode="wait">
                   {error && (
                     <motion.p
+                      key="access-code-error-text"
                       className="text-center text-sm text-destructive"
                       initial={{ opacity: 0, y: -4, height: 0 }}
                       animate={{ opacity: 1, y: 0, height: 'auto' }}

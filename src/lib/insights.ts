@@ -12,6 +12,7 @@
 import {
   type OHLC,
   atr,
+  bollingerBands,
   ema,
   macd,
   rsi,
@@ -25,7 +26,7 @@ import {
 // inside this module's summarizers — `export ... from` does NOT
 // bind the names into the local scope.
 export type { OHLC } from "./indicators";
-export { atr, ema, macd, rsi, slope, sma };
+export { atr, bollingerBands, ema, macd, rsi, slope, sma };
 
 export type Sentiment = "bullish" | "bearish" | "neutral";
 

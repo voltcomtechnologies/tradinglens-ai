@@ -225,3 +225,41 @@ export function slope(series: readonly number[], lookback = 5): number {
   if (Number.isNaN(last) || Number.isNaN(prev)) return 0;
   return last - prev;
 }
+
+/**
+ * Bollinger Bands (period, multiplier). Defaults to 20, 2 (John Bollinger standard).
+ * Returns:
+ *   - middle: SMA(period)
+ *   - upper:  middle + multiplier * stdDev
+ *   - lower:  middle - multiplier * stdDev
+ *   - bandwidth: (upper - lower) / middle
+ */
+export function bollingerBands(
+  closes: readonly number[],
+  period = 20,
+  multiplier = 2,
+): { middle: number[]; upper: number[]; lower: number[]; bandwidth: number[] } {
+  if (period <= 0) throw new Error("bollingerBands: period must be > 0");
+  const n = closes.length;
+  const middle = sma(closes, period);
+  const upper = new Array<number>(n).fill(NaN);
+  const lower = new Array<number>(n).fill(NaN);
+  const bandwidth = new Array<number>(n).fill(NaN);
+
+  for (let i = period - 1; i < n; i++) {
+    const mean = middle[i];
+    if (Number.isNaN(mean)) continue;
+    let sumSquares = 0;
+    for (let j = i - period + 1; j <= i; j++) {
+      const diff = closes[j] - mean;
+      sumSquares += diff * diff;
+    }
+    const stdDev = Math.sqrt(sumSquares / period);
+    upper[i] = mean + multiplier * stdDev;
+    lower[i] = mean - multiplier * stdDev;
+    bandwidth[i] = mean !== 0 ? (upper[i] - lower[i]) / mean : 0;
+  }
+
+  return { middle, upper, lower, bandwidth };
+}
+

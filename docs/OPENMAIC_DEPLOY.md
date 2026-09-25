@@ -24,7 +24,7 @@ openssl rand -hex 32
 
 # 2. Add it to TradingLens/.env.local
 echo 'OPENMAIC_SHARED_SECRET="<that value>"' >> .env.local
-echo 'NEXT_PUBLIC_OPENMAIC_URL="https://classroom.tradinglens.vercel.app"' >> .env.local
+echo 'NEXT_PUBLIC_OPENMAIC_URL="https://classroom.tradinglensai.com"' >> .env.local
 ```
 
 ## Push the Monorepo
@@ -54,8 +54,7 @@ Create **two** Vercel projects from the same GitHub repo:
   - `AUTH_SECRET`
   - `OPENROUTER_API_KEY` (or `GROQ_API_KEY`)
   - `OPENMAIC_SHARED_SECRET` — paste the value from step 1
-  - `NEXT_PUBLIC_OPENMAIC_URL` — `https://classroom.tradinglens.vercel.app`
-    (use the URL Vercel issues for Project 2, then update once Project 2 is up)
+  - `NEXT_PUBLIC_OPENMAIC_URL` — `https://classroom.tradinglensai.com`
 
   > **Scope reminder:** Repeat the values above for **both Production and
   > Preview** environments. Otherwise Preview deploys (PR previews, branch
@@ -136,7 +135,7 @@ After both projects deploy:
 3. Click **Start AI Classroom**. The button makes a POST to
    `/api/openmaic-token`, which checks subscription + rate limit then returns
    the signed token. The browser redirects to
-   `https://classroom.tradinglens.vercel.app/?r=<base64>&at=<token>`.
+   `https://classroom.tradinglensai.com/?r=<base64>&at=<token>`.
 4. OpenMAIC's patched middleware sees `at=`, verifies the HMAC signature,
    sets the `openmaic_access` cookie, and redirects to the same URL minus
    the token. The home page reads `r=`, populates the textarea with the

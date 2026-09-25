@@ -76,3 +76,11 @@ openmaic/packages/*/dist/
 # NOTE: the snapshot baselines themselves live next to the spec file at
 #   e2e/tests/trading-lens-narrow.spec.ts-snapshots/
 # and ARE committed on purpose so future diffs are detected in PR review.
+
+# Deploy archives and secrets
+.next-deploy.tar.gz
+.classroom-deploy.tar.gz
+*.tar.gz
+.ssh/
+*.key
+
