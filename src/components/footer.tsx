@@ -65,8 +65,8 @@ export function Footer() {
             <ul className="mt-5 space-y-3 text-sm">
               {[
                 { href: "/lens/trading", label: "TraderLens — AI co-pilot" },
-                { href: "/lens/chart", label: "ChartLens — Live charts" },
-                { href: "/lens/edu", label: "EduLens — Education" },
+                { href: "/dashboard/charts", label: "ChartLens — Live charts" },
+                { href: "/dashboard/learn", label: "EduLens — Education" },
                 { href: "/#pricing", label: "Pricing" },
               ].map((l) => (
                 <li key={l.href}>

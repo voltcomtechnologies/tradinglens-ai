@@ -32,8 +32,8 @@ interface NavbarProps {
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/lens/trading", label: "TraderLens", icon: Brain },
-  { href: "/lens/chart", label: "ChartLens", icon: ChartCandlestick },
-  { href: "/lens/edu", label: "EduLens", icon: BookOpen },
+  { href: "/dashboard/charts", label: "ChartLens", icon: ChartCandlestick },
+  { href: "/dashboard/learn", label: "EduLens", icon: BookOpen },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];

@@ -258,6 +258,9 @@ export function Hero3DScene() {
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 1.15;
+          gl.domElement.addEventListener("webglcontextlost", (event) => {
+            event.preventDefault();
+          });
         }}
       >
         <Scene />

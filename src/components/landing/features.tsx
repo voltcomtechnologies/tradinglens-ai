@@ -27,7 +27,7 @@ const lenses = [
     description:
       "ChartLens helps you analyze live trading charts, interpret price action, and apply AI-powered market analysis to make informed trading decisions with confidence.",
     points: ["Live expert chart sessions", "Price action interpretation", "Entry & exit zone breakdowns"],
-    href: "/lens/chart",
+    href: "/dashboard/charts",
     hue: "from-amber-400/25 via-accent/10 to-transparent",
     iconColor: "text-accent",
     iconBg: "bg-accent/15 border-accent/30",
@@ -40,7 +40,7 @@ const lenses = [
     description:
       "EduLens is a structured financial market training designed to help you understand market fundamentals, price action, risk management, and disciplined trading strategies.",
     points: ["Market fundamentals to advanced", "Risk management mastery", "Disciplined strategy building"],
-    href: "/lens/edu",
+    href: "/dashboard/learn",
     hue: "from-rose-500/20 via-chart-5/10 to-transparent",
     iconColor: "text-chart-5",
     iconBg: "bg-chart-5/15 border-chart-5/30",

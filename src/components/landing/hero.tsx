@@ -358,7 +358,7 @@ export function HeroSection() {
                   <ArrowRight className="h-4 w-4 group-hover:translate-x-1.5 transition-transform" />
                 </Link>
                 <Link
-                  href="/lens/chart"
+                  href="/dashboard/charts"
                   className="group inline-flex items-center gap-3 px-7 py-4 rounded-2xl border border-border/80 hover:border-primary/50 hover:bg-primary/5 transition-all bg-background/25 backdrop-blur-md"
                 >
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 border border-primary/30 group-hover:scale-110 transition-transform">
