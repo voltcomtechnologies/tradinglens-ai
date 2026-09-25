@@ -169,6 +169,10 @@ export class GeminiRealtimeClient {
       return;
     }
 
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+
     const clientMsg = {
       clientContent: {
         turns: [
@@ -315,6 +319,10 @@ export class GeminiRealtimeClient {
    */
   private playPcmAudio(base64Data: string) {
     if (this.isMuted || !this.audioCtx) return;
+
+    if (typeof window !== "undefined" && "speechSynthesis" in window && window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+    }
 
     try {
       const pcmBytes = this.base64ToArrayBuffer(base64Data);

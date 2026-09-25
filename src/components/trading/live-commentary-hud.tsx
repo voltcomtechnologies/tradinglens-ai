@@ -54,13 +54,59 @@ export function LiveCommentaryHud({
   const [audioLevel, setAudioLevel] = useState(0);
   const [transcript, setTranscript] = useState<Array<{ text: string; isUser: boolean; time: string }>>([]);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [isFallbackMode, setIsFallbackMode] = useState(false);
 
   const clientRef = useRef<GeminiRealtimeClient | null>(null);
   const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const prevSymbolRef = useRef(symbol);
+
+  // Natural browser speech fallback — strictly used when Gemini Realtime is not available
+  const speakWithBrowserTts = useCallback(
+    (text: string) => {
+      if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+      if (isMuted) return;
+
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      synthRef.current = utterance;
+
+      // Pick best English voice to approximate Aoede
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice =
+        voices.find(
+          (v) =>
+            v.name.includes("Samantha") ||
+            v.name.includes("Zira") ||
+            v.name.includes("Victoria") ||
+            (v.lang.startsWith("en") && v.name.includes("Female"))
+        ) || voices.find((v) => v.lang.startsWith("en"));
+      if (preferredVoice) utterance.voice = preferredVoice;
+
+      utterance.rate = 1.0;
+      utterance.pitch = 1.05;
+
+      utterance.onstart = () => {
+        setStatus("speaking");
+        setStatusDetail("Speaking commentary (Browser Voice Fallback)...");
+      };
+
+      utterance.onend = () => {
+        setStatus("ready");
+        setStatusDetail("Commentary complete. Standing by for market updates.");
+      };
+
+      utterance.onerror = () => {
+        setStatus("ready");
+      };
+
+      window.speechSynthesis.speak(utterance);
+    },
+    [isMuted]
+  );
 
   // Fetch Grok technical + fundamental analysis and speak it
   const generateAndSpeakCommentary = useCallback(
-    async (targetSymbol: string) => {
+    async (targetSymbol: string, forceFallback = false) => {
       setIsLoadingAnalysis(true);
       setStatusDetail("Synthesizing Grok fundamental & technical analysis...");
 
@@ -95,14 +141,44 @@ export function LiveCommentaryHud({
             },
           ]);
 
-          // Send to Gemini Realtime if connected
-          if (clientRef.current && clientRef.current.getStatus() === "ready") {
-            const prompt = `As Aoede, deliver this live institutional trading floor commentary for ${targetSymbol} to the trader directly with your natural voice: ${data.commentaryScript}`;
-            clientRef.current.sendTextMessage(prompt);
-          } else {
-            // High-fidelity speech synthesis fallback with natural female voice
-            speakWithBrowserTts(data.commentaryScript);
+          // Make sure browser speech is stopped first
+          if (typeof window !== "undefined" && "speechSynthesis" in window) {
+            window.speechSynthesis.cancel();
           }
+
+          // Check if Gemini Realtime client is active or usable
+          const hasGemini =
+            !forceFallback &&
+            !!clientRef.current &&
+            (clientRef.current.getStatus() === "ready" ||
+              clientRef.current.getStatus() === "speaking" ||
+              clientRef.current.getStatus() === "listening" ||
+              clientRef.current.getStatus() === "connecting");
+
+          if (hasGemini && clientRef.current) {
+            setIsFallbackMode(false);
+            // If connecting, wait briefly for ready state
+            if (clientRef.current.getStatus() === "connecting") {
+              for (let i = 0; i < 25; i++) {
+                if (clientRef.current.getStatus() !== "connecting") break;
+                await new Promise((r) => setTimeout(r, 100));
+              }
+            }
+
+            if (
+              clientRef.current.getStatus() === "ready" ||
+              clientRef.current.getStatus() === "speaking" ||
+              clientRef.current.getStatus() === "listening"
+            ) {
+              const prompt = `As Aoede, deliver this live institutional trading floor commentary for ${targetSymbol} to the trader directly with your natural voice: ${data.commentaryScript}`;
+              clientRef.current.sendTextMessage(prompt);
+              return;
+            }
+          }
+
+          // Only if Gemini is unavailable or failed, use browser TTS fallback
+          setIsFallbackMode(true);
+          speakWithBrowserTts(data.commentaryScript);
         }
       } catch (err) {
         console.error("Failed to generate commentary:", err);
@@ -111,47 +187,16 @@ export function LiveCommentaryHud({
         setIsLoadingAnalysis(false);
       }
     },
-    [currentPrice, priceChange, timeframe, strategyResult]
+    [currentPrice, priceChange, timeframe, strategyResult, speakWithBrowserTts]
   );
-
-  // Natural browser speech fallback if Gemini Realtime key is still being entered
-  const speakWithBrowserTts = (text: string) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    if (isMuted) return;
-
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    synthRef.current = utterance;
-
-    // Pick best English female voice to approximate Aoede
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice =
-      voices.find((v) => v.name.includes("Samantha") || v.name.includes("Zira") || v.name.includes("Victoria") || (v.lang.startsWith("en") && v.name.includes("Female"))) ||
-      voices.find((v) => v.lang.startsWith("en"));
-    if (preferredVoice) utterance.voice = preferredVoice;
-
-    utterance.rate = 1.0;
-    utterance.pitch = 1.05;
-
-    utterance.onstart = () => {
-      setStatus("speaking");
-      setStatusDetail("Speaking live chart commentary (Aoede)...");
-    };
-
-    utterance.onend = () => {
-      setStatus("ready");
-      setStatusDetail("Commentary complete. Standing by for market updates.");
-    };
-
-    utterance.onerror = () => {
-      setStatus("ready");
-    };
-
-    window.speechSynthesis.speak(utterance);
-  };
 
   // Initialize or connect Gemini Realtime Client
   const startRealtimeSession = useCallback(async () => {
+    // Immediately stop any browser synthesis that might have been playing
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+
     try {
       // 1. Check if server has API key configured
       let apiKey = customApiKey.trim();
@@ -164,12 +209,17 @@ export function LiveCommentaryHud({
       }
 
       if (!apiKey) {
-        // Prompt for key or run in fallback mode
+        // Prompt for key and run in fallback mode
         setShowKeyModal(true);
-        // Still generate Grok commentary and speak using TTS
-        await generateAndSpeakCommentary(symbol);
+        setIsFallbackMode(true);
+        setStatus("ready");
+        setStatusDetail("Running in fallback voice mode (No Gemini Key)");
+        await generateAndSpeakCommentary(symbol, true);
         return;
       }
+
+      setStatus("connecting");
+      setStatusDetail("Connecting to Google Gemini Realtime (Aoede)...");
 
       // Initialize Gemini Realtime client
       const client = new GeminiRealtimeClient({
@@ -199,20 +249,27 @@ Always balance technical signals (EMA, Bollinger, RSI, SL, TP) with fundamental 
         },
         onError: (err) => {
           console.error("Gemini Realtime Client error:", err);
-          setStatus("error");
-          setStatusDetail("Gemini connection issue. Utilizing fallback voice.");
+          setIsFallbackMode(true);
+          setStatusDetail("Gemini connection error. Browser voice fallback active.");
         },
       });
 
       clientRef.current = client;
       await client.connect();
 
-      // Trigger initial commentary
-      await generateAndSpeakCommentary(symbol);
+      setIsFallbackMode(false);
+      setStatus("ready");
+      setStatusDetail("Gemini 3.1 Flash Live (Aoede) active");
+
+      // Trigger initial commentary exclusively through Gemini Aoede
+      await generateAndSpeakCommentary(symbol, false);
     } catch (err) {
-      console.warn("Falling back to browser speech engine:", err);
-      // Fallback
-      await generateAndSpeakCommentary(symbol);
+      console.warn("Gemini connection failed, switching to browser TTS fallback:", err);
+      clientRef.current = null;
+      setIsFallbackMode(true);
+      setStatus("ready");
+      setStatusDetail("Gemini unavailable. Running in browser voice fallback.");
+      await generateAndSpeakCommentary(symbol, true);
     }
   }, [customApiKey, generateAndSpeakCommentary, symbol]);
 
@@ -227,6 +284,7 @@ Always balance technical signals (EMA, Bollinger, RSI, SL, TP) with fundamental 
     setStatus("disconnected");
     setStatusDetail("Live commentary paused");
     setIsMicOn(false);
+    setIsFallbackMode(false);
   };
 
   const toggleMic = async () => {
@@ -259,12 +317,15 @@ Always balance technical signals (EMA, Bollinger, RSI, SL, TP) with fundamental 
     }
   };
 
-  // Re-analyze when currency pair changes
+  // Re-analyze when currency pair changes (prevSymbolRef guards against status changes)
   useEffect(() => {
-    if (status !== "disconnected") {
-      generateAndSpeakCommentary(symbol);
+    if (prevSymbolRef.current !== symbol) {
+      prevSymbolRef.current = symbol;
+      if (status !== "disconnected") {
+        generateAndSpeakCommentary(symbol, isFallbackMode);
+      }
     }
-  }, [symbol, generateAndSpeakCommentary, status]);
+  }, [symbol, generateAndSpeakCommentary, status, isFallbackMode]);
 
   // Clean up on unmount
   useEffect(() => {
@@ -296,8 +357,15 @@ Always balance technical signals (EMA, Bollinger, RSI, SL, TP) with fundamental 
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-cyan-300">Live AI Voice Commentary</span>
-              <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 text-[10px] font-bold text-cyan-200">
-                Gemini 3.1 Flash Live • Voice &quot;Aoede&quot;
+              <span
+                className={cn(
+                  "rounded-full border px-2 py-0.5 text-[10px] font-bold transition-colors",
+                  isFallbackMode
+                    ? "border-amber-400/30 bg-amber-400/10 text-amber-200"
+                    : "border-cyan-400/30 bg-cyan-400/10 text-cyan-200"
+                )}
+              >
+                {isFallbackMode ? "Browser Voice (Fallback)" : 'Gemini 3.1 Flash Live • Voice "Aoede"'}
               </span>
             </div>
             <div className="flex items-center gap-2 mt-0.5">
