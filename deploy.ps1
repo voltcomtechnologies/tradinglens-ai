@@ -93,7 +93,7 @@ if ($SkipBuild) {
 } else {
     # Set production-critical NEXT_PUBLIC_ env vars for the build
     if (-not $env:NEXT_PUBLIC_OPENMAIC_URL) { $env:NEXT_PUBLIC_OPENMAIC_URL = "https://classroom.tradinglensai.com" }
-    if (-not $env:NEXT_PUBLIC_LIVEKIT_URL) { $env:NEXT_PUBLIC_LIVEKIT_URL = "wss://trade-kvdgigav.livekit.cloud" }
+    if (-not $env:NEXT_PUBLIC_LIVEKIT_URL) { $env:NEXT_PUBLIC_LIVEKIT_URL = "wss://tradinglens-02-2vggd8ac.livekit.cloud" }
 
 
     Write-Host "  Building with NEXT_PUBLIC_OPENMAIC_URL=$env:NEXT_PUBLIC_OPENMAIC_URL"
