@@ -310,6 +310,9 @@ Always balance technical signals (EMA, Bollinger, RSI, SL, TP) with fundamental 
           console.error("Gemini Realtime Client error:", err);
           setIsFallbackMode(true);
           setStatusDetail("Gemini connection error. Browser voice fallback active.");
+          if (lastCommentaryScriptRef.current) {
+            speakWithBrowserTts(lastCommentaryScriptRef.current);
+          }
         },
       });
 

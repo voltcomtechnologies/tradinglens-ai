@@ -37,6 +37,11 @@ export class GeminiRealtimeClient {
   private nextPlayTime = 0;
   private isMuted = false;
   private isMicActive = false;
+  private isSetupComplete = false;
+  private pendingTextMessage: string | null = null;
+  private setupTimer: ReturnType<typeof setTimeout> | null = null;
+  private connectResolver: (() => void) | null = null;
+  private connectRejecter: ((err: Error) => void) | null = null;
   private status: GeminiStatus = "disconnected";
   private config: GeminiRealtimeConfig;
   private activeSources: AudioBufferSourceNode[] = [];
@@ -68,6 +73,7 @@ export class GeminiRealtimeClient {
     }
 
     this.setStatus("connecting");
+    this.isSetupComplete = false;
 
     // Initialize Web Audio Output Context
     const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -82,13 +88,29 @@ export class GeminiRealtimeClient {
     const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${apiKey}`;
 
     return new Promise((resolve, reject) => {
+      this.connectResolver = resolve;
+      this.connectRejecter = reject;
+
+      // Timeout safety: if setupComplete doesn't arrive within 10 seconds, reject cleanly
+      if (this.setupTimer) {
+        clearTimeout(this.setupTimer);
+      }
+      this.setupTimer = setTimeout(() => {
+        if (!this.isSetupComplete) {
+          const err = new Error("Gemini Realtime setup timed out");
+          this.disconnect();
+          this.setStatus("error", err.message);
+          this.config.onError?.(err);
+          reject(err);
+        }
+      }, 10000);
+
       try {
         this.ws = new WebSocket(wsUrl);
 
         this.ws.onopen = () => {
           this.sendInitialSetup();
-          this.setStatus("ready");
-          resolve();
+          // Note: We wait for the server's setupComplete message before resolving the connect promise!
         };
 
         this.ws.onmessage = async (event) => {
@@ -107,16 +129,47 @@ export class GeminiRealtimeClient {
         };
 
         this.ws.onerror = (event) => {
+          if (this.setupTimer) {
+            clearTimeout(this.setupTimer);
+            this.setupTimer = null;
+          }
           console.error("Gemini WebSocket error:", event);
           this.setStatus("error", "WebSocket connection error");
-          reject(new Error("WebSocket error connecting to Gemini Realtime"));
+          const err = new Error("WebSocket error connecting to Gemini Realtime");
+          this.config.onError?.(err);
+          if (this.connectRejecter) {
+            this.connectRejecter(err);
+            this.connectResolver = null;
+            this.connectRejecter = null;
+          }
         };
 
         this.ws.onclose = (event) => {
+          if (this.setupTimer) {
+            clearTimeout(this.setupTimer);
+            this.setupTimer = null;
+          }
           this.cleanupAudio();
-          this.setStatus("disconnected", `Connection closed (${event.code})`);
+          this.isSetupComplete = false;
+          if (event.code !== 1000) {
+            console.warn(`Gemini WebSocket closed unexpectedly (${event.code})`);
+            const err = new Error(`Connection closed (${event.code})`);
+            this.setStatus("error", `Connection closed (${event.code})`);
+            this.config.onError?.(err);
+            if (this.connectRejecter) {
+              this.connectRejecter(err);
+              this.connectResolver = null;
+              this.connectRejecter = null;
+            }
+          } else {
+            this.setStatus("disconnected", `Connection closed (1000)`);
+          }
         };
       } catch (err) {
+        if (this.setupTimer) {
+          clearTimeout(this.setupTimer);
+          this.setupTimer = null;
+        }
         this.setStatus("error", (err as Error).message);
         reject(err);
       }
@@ -166,6 +219,12 @@ export class GeminiRealtimeClient {
   public sendTextMessage(text: string) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       console.warn("WebSocket not open, cannot send text message");
+      return;
+    }
+
+    // Google BidiGenerateContent protocol forbids sending clientContent before setupComplete
+    if (!this.isSetupComplete) {
+      this.pendingTextMessage = text;
       return;
     }
 
@@ -284,6 +343,27 @@ export class GeminiRealtimeClient {
   private handleServerMessage(msg: any) {
     if (!msg) return;
 
+    // Check for setup completion handshake
+    if (msg.setupComplete) {
+      if (this.setupTimer) {
+        clearTimeout(this.setupTimer);
+        this.setupTimer = null;
+      }
+      this.isSetupComplete = true;
+      this.setStatus("ready", "Gemini 3.1 Flash Live (Aoede) connected");
+      if (this.connectResolver) {
+        this.connectResolver();
+        this.connectResolver = null;
+        this.connectRejecter = null;
+      }
+      if (this.pendingTextMessage) {
+        const text = this.pendingTextMessage;
+        this.pendingTextMessage = null;
+        this.sendTextMessage(text);
+      }
+      return;
+    }
+
     // Check for server audio data
     const parts = msg?.serverContent?.modelTurn?.parts;
     if (Array.isArray(parts)) {
@@ -380,8 +460,19 @@ export class GeminiRealtimeClient {
   }
 
   public disconnect(): void {
+    if (this.setupTimer) {
+      clearTimeout(this.setupTimer);
+      this.setupTimer = null;
+    }
     this.stopMicrophone();
     this.stopAllAudioPlayback();
+    this.isSetupComplete = false;
+    this.pendingTextMessage = null;
+    if (this.connectRejecter) {
+      this.connectRejecter(new Error("Gemini Realtime disconnected"));
+      this.connectResolver = null;
+      this.connectRejecter = null;
+    }
     if (this.ws) {
       try {
         this.ws.close();
