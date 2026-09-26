@@ -104,7 +104,7 @@ function SessionInner({ onDisconnect }: { onDisconnect: () => void }) {
 
           <div>
             <h2 className="text-sm font-bold tracking-tight text-white">
-              Casey-367{" "}
+              Mr Gabriel{" "}
               <span className="text-[10px] font-normal text-white/30">· AI Trading Partner</span>
             </h2>
             <div className="flex items-center gap-2 mt-0.5">
@@ -240,11 +240,11 @@ function SessionInner({ onDisconnect }: { onDisconnect: () => void }) {
                   className="flex flex-col items-center gap-1.5"
                 >
                   <p className="text-sm font-bold text-white/70 capitalize">
-                    {isSpeaking ? "Casey is speaking..." : agentState === "listening" ? "Listening to you..." : agentState || "Connecting..."}
+                    {isSpeaking ? "Mr Gabriel is speaking..." : agentState === "listening" ? "Listening to you..." : agentState || "Connecting..."}
                   </p>
                   <div className="flex items-center gap-1 text-[11px] text-white/25">
                     <Zap className="h-3 w-3 text-primary/40" />
-                    Share your screen to show Casey a chart
+                    Share your screen to show Mr Gabriel a chart
                   </div>
                 </motion.div>
 

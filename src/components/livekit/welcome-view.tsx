@@ -117,7 +117,7 @@ export function WelcomeView({
           </div>
         </div>
 
-        <StatCard label="Partner" value="Casey-367" sub="AI Voice Agent" icon={Brain} color="bg-primary/10 text-primary" />
+        <StatCard label="Partner" value="Mr Gabriel" sub="AI Voice Agent" icon={Brain} color="bg-primary/10 text-primary" />
         <StatCard label="Protocol" value="WebRTC" sub="LiveKit Cloud" icon={Radio} color="bg-cyan-400/10 text-cyan-400" />
         <StatCard label="Latency" value="< 100ms" sub="Real-time voice" icon={Zap} color="bg-emerald-400/10 text-emerald-400" />
         <StatCard label="Security" value="Encrypted" sub="End-to-end" icon={Shield} color="bg-indigo-400/10 text-indigo-400" />
@@ -205,7 +205,7 @@ export function WelcomeView({
         >
           Meet{" "}
           <span className="bg-gradient-to-r from-primary via-amber-300 to-primary bg-clip-text text-transparent">
-            Casey
+            Mr Gabriel
           </span>
           , Your AI Analyst
         </motion.h1>
@@ -217,7 +217,7 @@ export function WelcomeView({
           className="text-sm text-white/40 max-w-md mx-auto mb-8 leading-relaxed"
         >
           Share your screen, describe the chart, and get instant institutional-grade analysis.
-          Casey listens, sees, and speaks — your always-available trading companion.
+          Mr Gabriel listens, sees, and speaks — your always-available trading companion.
         </motion.p>
 
         {/* Capabilities row */}
@@ -300,7 +300,7 @@ export function WelcomeView({
                     animate={{ opacity: [1, 0.4, 1] }}
                     transition={{ repeat: Infinity, duration: 1.2 }}
                   >
-                    Connecting to Casey...
+                    Connecting to Mr Gabriel...
                   </motion.span>
                 </>
               ) : (
@@ -327,7 +327,7 @@ export function WelcomeView({
         <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4">
           <p className="text-[10px] tracking-widest text-white/30 uppercase mb-3">How It Works</p>
           {[
-            { n: "01", text: "Click Begin to connect to Casey" },
+            { n: "01", text: "Click Begin to connect to Mr Gabriel" },
             { n: "02", text: "Share your chart screen" },
             { n: "03", text: "Speak naturally — ask anything" },
             { n: "04", text: "Get live analysis with voice" },
@@ -340,7 +340,7 @@ export function WelcomeView({
         </div>
 
         <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4">
-          <p className="text-[10px] tracking-widest text-white/30 uppercase mb-3">Casey Can Analyse</p>
+          <p className="text-[10px] tracking-widest text-white/30 uppercase mb-3">Mr Gabriel Can Analyse</p>
           {[
             "Support & Resistance",
             "Trend & Price Action",
@@ -359,7 +359,7 @@ export function WelcomeView({
         <div className="rounded-xl border border-emerald-500/10 bg-emerald-500/[0.04] p-4">
           <p className="text-[10px] tracking-widest text-emerald-500/60 uppercase mb-2">Pro Tip</p>
           <p className="text-xs text-white/30 leading-relaxed">
-            Share your chart screen before speaking for best results. Casey sees and hears simultaneously.
+            Share your chart screen before speaking for best results. Mr Gabriel sees and hears simultaneously.
           </p>
         </div>
       </motion.div>
