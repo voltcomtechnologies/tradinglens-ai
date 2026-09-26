@@ -44,7 +44,7 @@ function Write-Fail($message) {
 }
 
 function Invoke-SSH($command) {
-    $result = & ssh -i $SSH_KEY -o StrictHostKeyChecking=no "$VPS_USER@$VPS_HOST" $command 2>&1
+    $result = & ssh -n -i $SSH_KEY -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=15 "$VPS_USER@$VPS_HOST" $command 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Fail "SSH command failed: $command"
         Write-Host $result -ForegroundColor Yellow
@@ -54,7 +54,7 @@ function Invoke-SSH($command) {
 }
 
 function Invoke-SCP($local, $remote) {
-    & scp -i $SSH_KEY -o StrictHostKeyChecking=no $local "${VPS_USER}@${VPS_HOST}:${remote}" 2>&1
+    & scp -i $SSH_KEY -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=15 $local "${VPS_USER}@${VPS_HOST}:${remote}" 2>&1
     if ($LASTEXITCODE -ne 0) {
         throw "SCP upload failed"
     }
