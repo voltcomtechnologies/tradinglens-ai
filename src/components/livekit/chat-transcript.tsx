@@ -58,7 +58,7 @@ export function ChatTranscript() {
             </motion.div>
             <p className="text-xs font-medium text-white/30">Speak to start a conversation</p>
             <p className="text-[11px] mt-1.5 text-white/15 max-w-[160px] leading-relaxed">
-              Transcripts stream here as you talk with Mr Gabriel
+              Transcripts stream here as you talk with Chief Gabriel
             </p>
           </div>
         ) : (
@@ -97,7 +97,7 @@ export function ChatTranscript() {
                     }`}
                   >
                     <p className={`font-semibold text-[10px] mb-1 ${isAgent ? "text-primary/60" : "text-white/30"}`}>
-                      {isAgent ? "Mr Gabriel" : "You"}
+                      {isAgent ? "Chief Gabriel" : "You"}
                     </p>
                     <p className="leading-relaxed text-[12px]">{item.text}</p>
                   </div>
@@ -133,7 +133,7 @@ export function ChatTranscript() {
                     }`}
                   >
                     <p className={`font-semibold text-[10px] mb-1 ${isAgent ? "text-primary/60" : "text-white/30"}`}>
-                      {isAgent ? "Mr Gabriel" : (msg.from?.name?.replace(/Casey(-367)?/gi, "Mr Gabriel") || "You")}
+                      {isAgent ? "Chief Gabriel" : (msg.from?.name?.replace(/Casey(-367)?/gi, "Chief Gabriel") || "You")}
                     </p>
                     <p className="leading-relaxed text-[12px]">{msg.message}</p>
                   </div>

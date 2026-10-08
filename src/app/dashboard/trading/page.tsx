@@ -104,7 +104,7 @@ export default function DashboardTradingLensPage() {
                 transition={{ repeat: Infinity, duration: 3.5 }}
                 className="h-px w-12 bg-gradient-to-r from-transparent via-primary/60 to-transparent"
               />
-              <span className="text-[10px] text-white/20">MR GABRIEL</span>
+              <span className="text-[10px] text-white/20">CHIEF GABRIEL</span>
             </div>
           </div>
 
