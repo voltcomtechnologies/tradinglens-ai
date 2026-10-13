@@ -308,33 +308,65 @@ function Hero() {
               </span>
             </div>
 
-            <div className="mt-8 grid grid-cols-3 gap-3 max-w-xl">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 backdrop-blur">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-white/40">Win ratio — last year</div>
-                <div className="mt-1 flex items-baseline gap-1.5">
-                  <span className="font-display text-xl font-bold text-white">
-                    <Counter value={84.65} decimals={2} suffix="%" />
-                  </span>
-                  <span className="text-xs font-semibold text-emerald-300">+6.39%</span>
+            <div className="mt-8 grid grid-cols-3 gap-2 sm:gap-3 max-w-xl">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2.5 sm:px-4 sm:py-3 backdrop-blur min-w-0 overflow-hidden flex flex-col justify-between">
+                <div>
+                  <div className="text-[9px] sm:text-[11px] uppercase tracking-wider sm:tracking-[0.16em] text-white/40 truncate">
+                    Win ratio <span className="hidden sm:inline">— last year</span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-baseline gap-1 sm:gap-1.5">
+                    <span className="font-display text-base sm:text-xl font-bold text-white leading-none">
+                      <Counter value={84.65} decimals={2} suffix="%" />
+                    </span>
+                    <span className="text-[10px] sm:text-xs font-semibold text-emerald-300 leading-none">+6.39%</span>
+                  </div>
                 </div>
-                <div className="text-[11px] text-white/35">Market comparison</div>
-              </div>
-              <div className="rounded-2xl border border-primary/20 bg-primary/[0.07] px-4 py-3">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-primary/70">Trustpilot</div>
-                <div className="mt-1 flex items-center gap-1">
-                  <span className="font-display text-xl font-bold text-white">4.9/5</span>
-                  <span className="flex gap-0.5">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} className="h-3 w-3 fill-primary text-primary" />
-                    ))}
-                  </span>
+                <div className="mt-1 text-[9px] sm:text-[11px] text-white/35 leading-tight truncate">
+                  <span className="sm:hidden">vs Market</span>
+                  <span className="hidden sm:inline">Market comparison</span>
                 </div>
-                <div className="text-[11px] text-white/50">Best Rated • 1.5M+ traders</div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-white/40">We are featured in</div>
-                <div className="mt-1 font-display text-xs font-semibold tracking-widest text-white/60">BLOOMBERG • TRADINGVIEW • MARKETWATCH</div>
-                <div className="text-[11px] text-white/35">Institutional-grade data</div>
+
+              <div className="rounded-2xl border border-primary/20 bg-primary/[0.07] p-2.5 sm:px-4 sm:py-3 min-w-0 overflow-hidden flex flex-col justify-between">
+                <div>
+                  <div className="text-[9px] sm:text-[11px] uppercase tracking-wider sm:tracking-[0.16em] text-primary/70 truncate">
+                    Trustpilot
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-1">
+                    <span className="font-display text-base sm:text-xl font-bold text-white leading-none">4.9/5</span>
+                    <span className="flex gap-0.5">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} className="h-2.5 w-2.5 sm:h-3 sm:w-3 fill-primary text-primary" />
+                      ))}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-1 text-[9px] sm:text-[11px] text-white/50 leading-tight truncate">
+                  <span className="hidden sm:inline">Best Rated • </span>1.5M+ traders
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-2.5 sm:px-4 sm:py-3 backdrop-blur min-w-0 overflow-hidden flex flex-col justify-between">
+                <div>
+                  <div className="text-[9px] sm:text-[11px] uppercase tracking-wider sm:tracking-[0.16em] text-white/40 truncate">
+                    <span className="sm:hidden">Featured in</span>
+                    <span className="hidden sm:inline">We are featured in</span>
+                  </div>
+                  <div className="mt-1 font-display text-[9px] sm:text-xs font-semibold text-white/70 leading-snug">
+                    <div className="sm:hidden flex flex-col text-[8.5px] uppercase tracking-wider text-white/60 leading-tight">
+                      <span className="truncate">Bloomberg</span>
+                      <span className="truncate">TradingView</span>
+                      <span className="truncate">MarketWatch</span>
+                    </div>
+                    <div className="hidden sm:block tracking-widest text-white/60">
+                      BLOOMBERG • TRADINGVIEW • MARKETWATCH
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-1 text-[9px] sm:text-[11px] text-white/35 leading-tight truncate">
+                  <span className="sm:hidden">Institutional</span>
+                  <span className="hidden sm:inline">Institutional-grade data</span>
+                </div>
               </div>
             </div>
           </motion.div>
@@ -1238,9 +1270,11 @@ function FAQSection() {
                     <MapPin className="h-4 w-4" />
                   </span>
                   <span className="text-white/60 text-sm leading-6">
-                    <span className="block sm:inline">Plot 8 Port Elizabeth Street, Off Nirobi Street</span>
+                    <span className="block sm:inline">Plot 8 Port Elizabeth Street,</span>
                     <span className="hidden sm:inline"> </span>
-                    <span className="block sm:inline">Wuse II FCT, Abuja Nigeria</span>
+                    <span className="block sm:inline">Off Nirobi Street Wuse II</span>
+                    <span className="hidden sm:inline"> </span>
+                    <span className="block sm:inline">FCT, Abuja Nigeria</span>
                   </span>
                 </li>
               </ul>

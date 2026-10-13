@@ -120,9 +120,11 @@ export function Footer() {
                   <MapPin className="h-4 w-4" />
                 </span>
                 <span className="leading-6 text-sm">
-                  <span className="block sm:inline">Plot 8 Port Elizabeth Street, Off Nirobi Street</span>
+                  <span className="block sm:inline">Plot 8 Port Elizabeth Street,</span>
                   <span className="hidden sm:inline"> </span>
-                  <span className="block sm:inline">Wuse II FCT, Abuja Nigeria</span>
+                  <span className="block sm:inline">Off Nirobi Street Wuse II</span>
+                  <span className="hidden sm:inline"> </span>
+                  <span className="block sm:inline">FCT, Abuja Nigeria</span>
                 </span>
               </li>
             </ul>

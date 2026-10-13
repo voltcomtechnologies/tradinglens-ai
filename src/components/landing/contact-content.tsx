@@ -278,9 +278,11 @@ export function ContactFormSection() {
                 Say Hi &amp; Hello
               </h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                <span className="block sm:inline">Plot 8 Port Elizabeth Street, Off Nirobi Street</span>
+                <span className="block sm:inline">Plot 8 Port Elizabeth Street,</span>
                 <span className="hidden sm:inline"> </span>
-                <span className="block sm:inline">Wuse II FCT, Abuja Nigeria</span>
+                <span className="block sm:inline">Off Nirobi Street Wuse II</span>
+                <span className="hidden sm:inline"> </span>
+                <span className="block sm:inline">FCT, Abuja Nigeria</span>
               </p>
             </div>
           </ScrollReveal>
