@@ -83,9 +83,165 @@ function Counter({ value, suffix = "", decimals = 0 }: { value: number; suffix?:
 }
 
 // ──────────────────────────────────────────────────────────
+// HERO PAIRS & CANDLESTICK DATA
+// ──────────────────────────────────────────────────────────
+const heroPairs = [
+  {
+    symbol: "EUR/USD",
+    tf: "1H",
+    price: "1.0847",
+    change: "+0.24%",
+    isPositive: true,
+    bid: "1.0845",
+    ask: "1.0849",
+    confidence: "84.6%",
+    conviction: "High conviction",
+    badgePattern: "1H • 24 CANDLES",
+    badgeSentiment: "BULLISH",
+    sentimentColor: "text-emerald-300 bg-emerald-400/15 border-emerald-300/20",
+    analysis: "Strong support at 1.0820 — RSI printing bullish divergence. Risk-reward 1:3.2 on reclaim.",
+    candles: [
+      { o: 104, c: 112, h: 98, l: 116, bull: false },
+      { o: 112, c: 108, h: 102, l: 115, bull: true },
+      { o: 108, c: 118, h: 105, l: 122, bull: false },
+      { o: 118, c: 124, h: 114, l: 130, bull: false },
+      { o: 124, c: 116, h: 112, l: 126, bull: true },
+      { o: 116, c: 122, h: 114, l: 128, bull: false },
+      { o: 122, c: 132, h: 120, l: 138, bull: false },
+      { o: 132, c: 125, h: 121, l: 135, bull: true },
+      { o: 125, c: 114, h: 110, l: 126, bull: true },
+      { o: 114, c: 118, h: 110, l: 122, bull: false },
+      { o: 118, c: 106, h: 102, l: 120, bull: true },
+      { o: 106, c: 98, h: 94, l: 109, bull: true },
+      { o: 98, c: 103, h: 95, l: 106, bull: false },
+      { o: 103, c: 91, h: 88, l: 105, bull: true },
+      { o: 91, c: 84, h: 80, l: 94, bull: true },
+      { o: 84, c: 88, h: 81, l: 91, bull: false },
+      { o: 88, c: 76, h: 72, l: 90, bull: true },
+      { o: 76, c: 68, h: 64, l: 79, bull: true },
+      { o: 68, c: 72, h: 65, l: 75, bull: false },
+      { o: 72, c: 59, h: 55, l: 74, bull: true },
+      { o: 59, c: 50, h: 46, l: 62, bull: true },
+      { o: 50, c: 54, h: 47, l: 58, bull: false },
+      { o: 54, c: 42, h: 38, l: 56, bull: true },
+      { o: 42, c: 32, h: 26, l: 45, bull: true },
+    ],
+    emaPath: "M 20 110 C 110 128, 200 118, 300 96 S 460 62, 555 38",
+    orderBlock: { y: 122, height: 16, label: "DEMAND ZONE • 1.0820" },
+    miniCandles: [
+      { o: 8, c: 4, h: 2, l: 10, bull: true },
+      { o: 4, c: 7, h: 3, l: 9, bull: false },
+      { o: 7, c: 3, h: 1, l: 8, bull: true },
+      { o: 3, c: 1, h: 0, l: 5, bull: true },
+    ],
+  },
+  {
+    symbol: "GBP/USD",
+    tf: "1H",
+    price: "1.2648",
+    change: "+0.18%",
+    isPositive: true,
+    bid: "1.2646",
+    ask: "1.2650",
+    confidence: "81.2%",
+    conviction: "Solid breakout",
+    badgePattern: "1H • 24 CANDLES",
+    badgeSentiment: "EXPANDING",
+    sentimentColor: "text-emerald-300 bg-emerald-400/15 border-emerald-300/20",
+    analysis: "Higher low established at 1.2615 with volume expansion. Clean price action holding above 20 EMA.",
+    candles: [
+      { o: 118, c: 126, h: 112, l: 130, bull: false },
+      { o: 126, c: 120, h: 116, l: 128, bull: true },
+      { o: 120, c: 110, h: 106, l: 122, bull: true },
+      { o: 110, c: 116, h: 108, l: 120, bull: false },
+      { o: 116, c: 104, h: 100, l: 118, bull: true },
+      { o: 104, c: 112, h: 101, l: 115, bull: false },
+      { o: 112, c: 98, h: 94, l: 114, bull: true },
+      { o: 98, c: 105, h: 95, l: 108, bull: false },
+      { o: 105, c: 92, h: 88, l: 108, bull: true },
+      { o: 92, c: 84, h: 80, l: 96, bull: true },
+      { o: 84, c: 89, h: 81, l: 92, bull: false },
+      { o: 89, c: 78, h: 74, l: 91, bull: true },
+      { o: 78, c: 84, h: 75, l: 87, bull: false },
+      { o: 84, c: 70, h: 66, l: 86, bull: true },
+      { o: 70, c: 62, h: 58, l: 73, bull: true },
+      { o: 62, c: 68, h: 60, l: 71, bull: false },
+      { o: 68, c: 56, h: 52, l: 70, bull: true },
+      { o: 56, c: 48, h: 44, l: 59, bull: true },
+      { o: 48, c: 54, h: 46, l: 57, bull: false },
+      { o: 54, c: 45, h: 40, l: 56, bull: true },
+      { o: 45, c: 50, h: 42, l: 53, bull: false },
+      { o: 50, c: 40, h: 36, l: 52, bull: true },
+      { o: 40, c: 44, h: 37, l: 48, bull: false },
+      { o: 44, c: 35, h: 29, l: 47, bull: true },
+    ],
+    emaPath: "M 20 124 C 120 116, 210 94, 310 76 S 450 56, 555 42",
+    orderBlock: { y: 104, height: 16, label: "BREAKOUT BLOCK • 1.2615" },
+    miniCandles: [
+      { o: 9, c: 5, h: 3, l: 11, bull: true },
+      { o: 5, c: 2, h: 1, l: 7, bull: true },
+      { o: 2, c: 6, h: 2, l: 8, bull: false },
+      { o: 6, c: 2, h: 0, l: 7, bull: true },
+    ],
+  },
+  {
+    symbol: "XAU/USD",
+    tf: "1H",
+    price: "2,342.8",
+    change: "−0.12%",
+    isPositive: false,
+    bid: "2,342.5",
+    ask: "2,343.1",
+    confidence: "79.4%",
+    conviction: "Demand reload",
+    badgePattern: "1H • 24 CANDLES",
+    badgeSentiment: "RETESTING",
+    sentimentColor: "text-amber-300 bg-amber-400/15 border-amber-300/20",
+    analysis: "Gold respecting 2,338 demand zone after liquidity retest. Compression building for directional release.",
+    candles: [
+      { o: 54, c: 44, h: 40, l: 58, bull: true },
+      { o: 44, c: 36, h: 30, l: 48, bull: true },
+      { o: 36, c: 48, h: 32, l: 52, bull: false },
+      { o: 48, c: 42, h: 38, l: 51, bull: true },
+      { o: 42, c: 56, h: 40, l: 60, bull: false },
+      { o: 56, c: 68, h: 54, l: 72, bull: false },
+      { o: 68, c: 62, h: 58, l: 71, bull: true },
+      { o: 62, c: 75, h: 60, l: 78, bull: false },
+      { o: 75, c: 84, h: 72, l: 88, bull: false },
+      { o: 84, c: 76, h: 71, l: 87, bull: true },
+      { o: 76, c: 88, h: 74, l: 92, bull: false },
+      { o: 88, c: 98, h: 84, l: 104, bull: false },
+      { o: 98, c: 90, h: 85, l: 101, bull: true },
+      { o: 90, c: 102, h: 88, l: 106, bull: false },
+      { o: 102, c: 114, h: 99, l: 120, bull: false },
+      { o: 114, c: 105, h: 100, l: 122, bull: true },
+      { o: 105, c: 96, h: 92, l: 108, bull: true },
+      { o: 96, c: 102, h: 93, l: 106, bull: false },
+      { o: 102, c: 90, h: 86, l: 104, bull: true },
+      { o: 90, c: 82, h: 78, l: 94, bull: true },
+      { o: 82, c: 88, h: 80, l: 91, bull: false },
+      { o: 88, c: 78, h: 74, l: 90, bull: true },
+      { o: 78, c: 84, h: 76, l: 87, bull: false },
+      { o: 84, c: 74, h: 69, l: 88, bull: true },
+    ],
+    emaPath: "M 20 44 C 110 52, 210 88, 310 102 S 460 88, 555 80",
+    orderBlock: { y: 106, height: 16, label: "DEMAND FLOOR • 2,338" },
+    miniCandles: [
+      { o: 2, c: 6, h: 1, l: 7, bull: false },
+      { o: 6, c: 10, h: 5, l: 12, bull: false },
+      { o: 10, c: 6, h: 4, l: 11, bull: true },
+      { o: 6, c: 4, h: 3, l: 8, bull: true },
+    ],
+  },
+];
+
+// ──────────────────────────────────────────────────────────
 // HERO
 // ──────────────────────────────────────────────────────────
 function Hero() {
+  const [activePairIndex, setActivePairIndex] = useState(0);
+  const activePair = heroPairs[activePairIndex];
+
   return (
     <section className="relative isolate overflow-hidden bg-[#050a18] border-b border-white/[0.06]">
       <Hero3DScene />
@@ -197,11 +353,11 @@ function Hero() {
                 <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
                   <div className="flex items-center gap-3">
                     <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/15 border border-primary/20 text-primary">
-                      <LineChart className="h-4 w-4" />
+                      <ChartCandlestick className="h-4 w-4" />
                     </span>
                     <div>
-                      <p className="text-xs font-semibold text-white">Live market pulse</p>
-                      <p className="text-[10px] text-white/40">Tuesday • 09:41 UTC • 16 pairs tracked</p>
+                      <p className="text-xs font-semibold text-white">Live Candlestick Pulse</p>
+                      <p className="text-[10px] text-white/40">Tuesday • 09:41 UTC • 16 pairs streaming</p>
                     </div>
                   </div>
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold tracking-widest text-emerald-300">
@@ -211,72 +367,235 @@ function Hero() {
 
                 <div className="px-5 pt-5 flex items-end justify-between">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">EUR / USD • 1H</p>
-                    <p className="font-display text-4xl font-semibold tracking-tight text-white mt-1">1.0847</p>
-                    <p className="text-xs text-emerald-300 mt-1 flex items-center gap-1">
-                      <span className="inline-flex h-5 items-center rounded-full bg-emerald-400/15 border border-emerald-300/20 px-2 text-[11px] font-bold">+0.24%</span>
-                      <span className="text-white/40">Bid 1.0845 • Ask 1.0849</span>
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">{activePair.symbol} • {activePair.tf}</p>
+                    <p className="font-display text-4xl font-semibold tracking-tight text-white mt-1 tabular-nums">{activePair.price}</p>
+                    <p className={`text-xs mt-1 flex items-center gap-1 ${activePair.isPositive ? "text-emerald-300" : "text-rose-300"}`}>
+                      <span className={`inline-flex h-5 items-center rounded-full border px-2 text-[11px] font-bold ${activePair.isPositive ? "bg-emerald-400/15 border-emerald-300/20 text-emerald-300" : "bg-rose-400/15 border-rose-300/20 text-rose-300"}`}>{activePair.change}</span>
+                      <span className="text-white/40">Bid {activePair.bid} • Ask {activePair.ask}</span>
                     </p>
                   </div>
                   <div className="rounded-2xl border border-primary/20 bg-primary/10 px-3.5 py-2.5 text-center min-w-[92px]">
                     <p className="text-[10px] tracking-widest text-primary/70 uppercase">Confidence</p>
-                    <p className="font-display text-lg font-bold text-primary">84.6%</p>
-                    <p className="text-[10px] text-primary/60">High conviction</p>
+                    <p className="font-display text-lg font-bold text-primary">{activePair.confidence}</p>
+                    <p className="text-[10px] text-primary/60">{activePair.conviction}</p>
                   </div>
                 </div>
 
+                {/* Candlestick Holographic Chart */}
                 <div className="relative mx-5 mt-4 h-[156px] overflow-hidden rounded-2xl border border-white/[0.06] bg-[#060d1e]">
-                  <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[size:28px_28px] opacity-60" />
-                  <svg viewBox="0 0 600 180" className="relative h-full w-full" preserveAspectRatio="none" aria-hidden>
+                  <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:24px_24px] opacity-60" />
+                  
+                  <svg viewBox="0 0 580 160" className="relative h-full w-full" preserveAspectRatio="none" aria-hidden>
                     <defs>
-                      <linearGradient id="pfill" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="#f2c14e" stopOpacity="0.28" />
-                        <stop offset="100%" stopColor="#f2c14e" stopOpacity="0" />
+                      <linearGradient id="bullCandleGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#34d399" />
+                        <stop offset="100%" stopColor="#059669" />
+                      </linearGradient>
+                      <linearGradient id="bearCandleGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#fb7185" />
+                        <stop offset="100%" stopColor="#e11d48" />
                       </linearGradient>
                       <filter id="pgglow">
-                        <feGaussianBlur stdDeviation="3.5" result="b" />
+                        <feGaussianBlur stdDeviation="3" result="b" />
                         <feMerge>
                           <feMergeNode in="b" />
                           <feMergeNode in="SourceGraphic" />
                         </feMerge>
                       </filter>
                     </defs>
-                    <path d="M0 142 C34 130 44 146 72 120 S112 134 142 107 S182 120 212 92 S252 110 278 84 S312 94 342 68 S376 86 402 60 S432 75 462 45 S502 60 532 28 S572 46 600 18 V180 H0Z" fill="url(#pfill)" />
-                    <path d="M0 142 C34 130 44 146 72 120 S112 134 142 107 S182 120 212 92 S252 110 278 84 S312 94 342 68 S376 86 402 60 S432 75 462 45 S502 60 532 28 S572 46 600 18" fill="none" stroke="#f2c14e" strokeWidth="3" filter="url(#pgglow)" />
-                    <circle cx="532" cy="28" r="5" fill="#fff7d6" stroke="#f2c14e" strokeWidth="2" />
-                    <circle cx="532" cy="28" r="12" fill="none" stroke="#f2c14e" strokeOpacity="0.25" strokeWidth="1" />
+
+                    {/* Order block / demand zone */}
+                    <rect
+                      x="10"
+                      y={activePair.orderBlock.y}
+                      width="560"
+                      height={activePair.orderBlock.height}
+                      fill="rgba(242,193,78,0.05)"
+                      stroke="rgba(242,193,78,0.2)"
+                      strokeDasharray="4 4"
+                      rx="3"
+                    />
+                    <text
+                      x="18"
+                      y={activePair.orderBlock.y + 11}
+                      fill="#f2c14e"
+                      fontSize="7.5"
+                      fontWeight="bold"
+                      opacity="0.75"
+                      letterSpacing="0.08em"
+                    >
+                      {activePair.orderBlock.label}
+                    </text>
+
+                    {/* 20 EMA trendline overlay */}
+                    <path
+                      d={activePair.emaPath}
+                      fill="none"
+                      stroke="#f2c14e"
+                      strokeWidth="1.8"
+                      strokeOpacity="0.7"
+                      filter="url(#pgglow)"
+                    />
+
+                    {/* Candlesticks sequence */}
+                    {activePair.candles.map((c, i) => {
+                      const cx = 20 + i * 23.5;
+                      const isLast = i === activePair.candles.length - 1;
+                      const top = Math.min(c.o, c.c);
+                      const bodyH = Math.max(3, Math.abs(c.o - c.c));
+                      const strokeColor = c.bull ? "#10b981" : "#f43f5e";
+                      const fillGrad = c.bull ? "url(#bullCandleGrad)" : "url(#bearCandleGrad)";
+
+                      return (
+                        <g key={i}>
+                          {/* Wick */}
+                          <line
+                            x1={cx}
+                            y1={c.h}
+                            x2={cx}
+                            y2={c.l}
+                            stroke={strokeColor}
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            opacity={isLast ? 1 : 0.85}
+                          />
+                          {/* Candle body */}
+                          <rect
+                            x={cx - 4.5}
+                            y={top}
+                            width="9"
+                            height={bodyH}
+                            rx="1.5"
+                            fill={fillGrad}
+                            stroke={strokeColor}
+                            strokeWidth="0.8"
+                          />
+
+                          {/* Live ticking indicator on final candle */}
+                          {isLast && (
+                            <g>
+                              {/* Horizontal live price beam */}
+                              <line
+                                x1={0}
+                                y1={c.c}
+                                x2={524}
+                                y2={c.c}
+                                stroke={strokeColor}
+                                strokeWidth="1"
+                                strokeDasharray="3 3"
+                                opacity="0.65"
+                              />
+                              {/* Live ticker tag on right edge */}
+                              <g transform={`translate(524, ${c.c - 8})`}>
+                                <rect
+                                  width="52"
+                                  height="16"
+                                  rx="4"
+                                  fill={c.bull ? "#059669" : "#e11d48"}
+                                  filter="url(#pgglow)"
+                                />
+                                <text
+                                  x="26"
+                                  y="11.5"
+                                  fill="#ffffff"
+                                  fontSize="8.5"
+                                  fontWeight="bold"
+                                  textAnchor="middle"
+                                  fontFamily="monospace"
+                                >
+                                  {activePair.price}
+                                </text>
+                              </g>
+                              {/* Live tick pulse */}
+                              <circle cx={cx} cy={c.c} r="3" fill="#ffffff" />
+                              <circle
+                                cx={cx}
+                                cy={c.c}
+                                r="7"
+                                fill="none"
+                                stroke={c.bull ? "#34d399" : "#fb7185"}
+                                strokeWidth="1.5"
+                                className="animate-ping"
+                                opacity="0.8"
+                              />
+                            </g>
+                          )}
+                        </g>
+                      );
+                    })}
                   </svg>
-                  <span className="absolute left-3 top-3 rounded-full border border-white/10 bg-black/40 px-2.5 py-1 text-[10px] font-semibold tracking-widest text-white/70 backdrop-blur">1H • 42 CANDLES</span>
-                  <span className="absolute right-3 top-3 rounded-full bg-emerald-400/15 border border-emerald-300/20 px-2.5 py-1 text-[10px] font-bold tracking-widest text-emerald-300">BULLISH</span>
+
+                  {/* Overlaid status tags */}
+                  <span className="absolute left-3 top-2.5 rounded-full border border-white/10 bg-black/50 px-2.5 py-0.5 text-[10px] font-semibold tracking-widest text-white/80 backdrop-blur">
+                    {activePair.badgePattern}
+                  </span>
+                  <span className={`absolute right-3 top-2.5 rounded-full border px-2.5 py-0.5 text-[10px] font-bold tracking-widest ${activePair.sentimentColor}`}>
+                    {activePair.badgeSentiment}
+                  </span>
                   <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
                 </div>
 
-                <div className="px-5 pt-4 pb-4">
+                {/* AI Analysis Pill */}
+                <div className="px-5 pt-4 pb-3">
                   <div className="rounded-2xl border border-primary/15 bg-primary/[0.06] p-3.5">
                     <div className="flex items-center gap-2 text-[11px] font-bold tracking-widest text-primary">
-                      <Sparkles className="h-3.5 w-3.5" /> AI ANALYSIS
+                      <Sparkles className="h-3.5 w-3.5" /> AI CANDLESTICK CONFLUENCE
                       <span className="ml-auto flex gap-0.5 items-end h-3">
                         {[0, 1, 2].map((i) => (
                           <span key={i} className="w-0.5 bg-primary rounded-full animate-wave" style={{ height: "100%", animationDelay: `${i * 0.18}s` }} />
                         ))}
                       </span>
                     </div>
-                    <p className="mt-1.5 text-sm leading-6 text-white/85">Strong support at 1.0820 — RSI printing bullish divergence. Risk-reward 1:3.2 on reclaim.</p>
+                    <p className="mt-1.5 text-sm leading-6 text-white/85">{activePair.analysis}</p>
                   </div>
                 </div>
 
+                {/* Interactive Candlestick Live Tickers */}
                 <div className="px-5 pb-5 grid grid-cols-3 gap-2">
-                  {[
-                    { p: "EUR/USD", v: "1.0847", c: "+0.24%" },
-                    { p: "GBP/USD", v: "1.2648", c: "+0.18%" },
-                    { p: "XAU/USD", v: "2,342.8", c: "−0.12%" },
-                  ].map((r) => (
-                    <div key={r.p} className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
-                      <div className="text-[10px] tracking-widest text-white/40">{r.p}</div>
-                      <div className="text-xs font-semibold text-white mt-0.5">{r.v}</div>
-                      <div className={`text-[11px] font-medium ${r.c.startsWith("+") ? "text-emerald-300" : "text-red-300"}`}>{r.c}</div>
-                    </div>
-                  ))}
+                  {heroPairs.map((r, idx) => {
+                    const isSelected = activePairIndex === idx;
+                    return (
+                      <button
+                        key={r.symbol}
+                        type="button"
+                        onClick={() => setActivePairIndex(idx)}
+                        className={`group relative rounded-xl border p-2.5 sm:px-3 sm:py-2.5 text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? "border-primary/45 bg-primary/[0.09] shadow-[0_0_18px_rgba(242,193,78,0.16)] ring-1 ring-primary/30"
+                            : "border-white/[0.06] bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className={`text-[10px] tracking-wider font-semibold ${isSelected ? "text-primary" : "text-white/50"}`}>
+                            {r.symbol}
+                          </div>
+                          <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        </div>
+                        <div className="text-xs font-semibold text-white mt-0.5 tabular-nums">{r.price}</div>
+                        <div className={`text-[11px] font-medium ${r.isPositive ? "text-emerald-300" : "text-rose-300"}`}>
+                          {r.change}
+                        </div>
+                        {/* Micro Candlestick Sparkline */}
+                        <div className="mt-1.5 flex items-center justify-between pt-1 border-t border-white/[0.06]">
+                          <span className="text-[9px] uppercase tracking-wider text-white/30">TICKS</span>
+                          <svg width="34" height="11" viewBox="0 0 34 11" className="overflow-visible" aria-hidden>
+                            {r.miniCandles.map((mc, mIdx) => {
+                              const mx = 4 + mIdx * 8.5;
+                              const mTop = Math.min(mc.o, mc.c);
+                              const mH = Math.max(1.5, Math.abs(mc.o - mc.c));
+                              const mColor = mc.bull ? "#10b981" : "#f43f5e";
+                              return (
+                                <g key={mIdx}>
+                                  <line x1={mx} y1={mc.h} x2={mx} y2={mc.l} stroke={mColor} strokeWidth="0.8" />
+                                  <rect x={mx - 1.8} y={mTop} width="3.6" height={mH} rx="0.5" fill={mColor} />
+                                </g>
+                              );
+                            })}
+                          </svg>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
