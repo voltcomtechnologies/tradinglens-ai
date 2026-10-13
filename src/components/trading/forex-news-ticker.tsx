@@ -83,7 +83,7 @@ export function ForexNewsTicker({ pair = null, className }: ForexNewsTickerProps
   const running = !isPaused && !prefersReduced && items.length > 0;
 
   // Accessible summary.
-  const ariaSummary = `Forex news ticker for ${pair ?? "all pairs"} — ${items.length} headlines`;
+  const ariaSummary = `Asset classes news ticker for ${pair ?? "all pairs"} — ${items.length} headlines`;
 
   return (
     <div
@@ -104,7 +104,7 @@ export function ForexNewsTicker({ pair = null, className }: ForexNewsTickerProps
       <div className="absolute left-0 top-0 bottom-0 z-10 flex items-center gap-1.5 px-3 bg-gradient-to-r from-background via-background/90 to-transparent">
         <Newspaper className="h-3.5 w-3.5 text-primary" />
         <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-          Forex News
+          Asset Classes News
         </span>
         <span
           className={cn(
@@ -151,7 +151,7 @@ export function ForexNewsTicker({ pair = null, className }: ForexNewsTickerProps
         </div>
       ) : items.length === 0 ? (
         <div className="px-3 py-2 pl-24 text-[11px] text-muted-foreground">
-          {status === "loading" ? "Loading Forex News…" : "No headlines for this pair yet."}
+          {status === "loading" ? "Loading Asset Classes News…" : "No headlines for this pair yet."}
         </div>
       ) : (
         <div className="flex items-center py-2 pl-24 pr-12" aria-hidden="true">

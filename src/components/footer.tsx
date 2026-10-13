@@ -103,8 +103,8 @@ export function Footer() {
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.04] border border-white/10 text-primary">
                   <Phone className="h-4 w-4" />
                 </span>
-                <a href="tel:+2347055555676" className="hover:text-primary transition-colors">
-                  +234 705 555 5676
+                <a href="tel:09055555898" className="hover:text-primary transition-colors">
+                  09055555898
                 </a>
               </li>
               <li className="flex items-center gap-2.5 text-white/60">
@@ -119,7 +119,11 @@ export function Footer() {
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.04] border border-white/10 text-primary">
                   <MapPin className="h-4 w-4" />
                 </span>
-                <span className="leading-6 text-sm">Plot 8, Port Elizabeth Street, Off Nairobi Street, Wuse II, Abuja, Nigeria</span>
+                <span className="leading-6 text-sm">
+                  <span className="block sm:inline">Plot 8 Port Elizabeth Street, Off Nirobi Street</span>
+                  <span className="hidden sm:inline"> </span>
+                  <span className="block sm:inline">Wuse II FCT, Abuja Nigeria</span>
+                </span>
               </li>
             </ul>
             <div className="mt-6 flex gap-2">

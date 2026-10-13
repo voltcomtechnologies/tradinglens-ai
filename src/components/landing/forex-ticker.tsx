@@ -301,7 +301,7 @@ export function ForexTicker() {
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             className="fixed bottom-0 inset-x-0 z-[60]"
             role="marquee"
-            aria-label="Live forex prices"
+            aria-label="Live asset classes prices"
           >
             <div className="h-11 glass-strong border-t border-primary/25 flex items-center overflow-hidden shadow-[0_-10px_36px_rgba(0,0,0,0.5)]">
               {/* Left broadcast badge */}
@@ -360,7 +360,7 @@ export function ForexTicker() {
 
       {/* Static accessible summary */}
       <span className="sr-only">
-        Live forex prices ticker showing {tickers.length} currency pairs.
+        Live asset classes prices ticker showing {tickers.length} currency pairs.
         {isConnected
           ? " Connected to real-time price feed."
           : " Showing simulated prices."}

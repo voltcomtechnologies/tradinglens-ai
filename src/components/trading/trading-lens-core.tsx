@@ -87,7 +87,7 @@ export function TradingLensCore() {
       const timeframeLabel = chartGranularity === "1h" ? "1H" : "1D";
 
       const data = await analyzeMutation.mutateAsync({
-        prompt: "Analyze this forex chart and provide a clear BUY, SELL, or HOLD recommendation with key levels and reasoning.",
+        prompt: "Analyze this asset classes chart and provide a clear BUY, SELL, or HOLD recommendation with key levels and reasoning.",
         pair: chartSymbol,
         timeframe: timeframeLabel,
         image: imageFile,

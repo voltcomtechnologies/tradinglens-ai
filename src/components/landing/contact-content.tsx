@@ -51,8 +51,8 @@ const channels = [
   {
     icon: Phone,
     title: "Give Us a Call",
-    value: "+234 905-555-5676",
-    href: "tel:+2349055555676",
+    value: "09055555898",
+    href: "tel:09055555898",
     accent: "text-primary",
     bg: "bg-primary/10 border-primary/30",
   },
@@ -260,7 +260,7 @@ export function ContactFormSection() {
                   business hours.
                 </p>
                 <a
-                  href="https://wa.me/2349055555676"
+                  href="https://wa.me/2349055555898"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-bullish text-white font-semibold text-sm transition-all hover:scale-[1.03] hover:shadow-xl hover:shadow-bullish/25"
@@ -277,9 +277,10 @@ export function ContactFormSection() {
               <h3 className="font-display text-xl font-bold mb-1.5">
                 Say Hi &amp; Hello
               </h3>
-              <p className="text-sm text-muted-foreground">
-                Plot 8, Port Elizabeth Street, Off Nairobi Street, Wuse II,
-                Abuja, Nigeria
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                <span className="block sm:inline">Plot 8 Port Elizabeth Street, Off Nirobi Street</span>
+                <span className="hidden sm:inline"> </span>
+                <span className="block sm:inline">Wuse II FCT, Abuja Nigeria</span>
               </p>
             </div>
           </ScrollReveal>

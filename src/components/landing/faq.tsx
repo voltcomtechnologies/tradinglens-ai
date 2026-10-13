@@ -15,8 +15,8 @@ const faqs = [
     a: "Yes — with full transparency. TraderLens doesn't just output a buy or sell signal and expect you to act on faith. It shows you the reasoning: the technical patterns it identified, the timeframes it analysed, and the risk levels it factored in.",
   },
   {
-    q: "Do you cover forex, crypto and stocks?",
-    a: "TraderLens simplifies trading, forex analysis, and stock market insights with real-time AI-powered chart breakdowns. ChartLens streams live analysis across 16 major currency pairs and metals, 24/7.",
+    q: "Do you cover asset classes, crypto and stocks?",
+    a: "TraderLens simplifies trading, asset classes analysis, and stock market insights with real-time AI-powered chart breakdowns. ChartLens streams live analysis across 16 major currency pairs and metals, 24/7.",
   },
   {
     q: "Is there a refund policy?",
@@ -69,10 +69,10 @@ export function FAQSection() {
                       <Phone className="h-4 w-4 text-primary" />
                     </span>
                     <a
-                      href="tel:+2347055555676"
+                      href="tel:09055555898"
                       className="hover:text-primary transition-colors"
                     >
-                      +234 705 555 5676
+                      09055555898
                     </a>
                   </li>
                   <li className="flex items-center gap-3">
@@ -86,13 +86,14 @@ export function FAQSection() {
                       info@tradinglensai.com
                     </a>
                   </li>
-                  <li className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/25">
+                  <li className="flex items-start gap-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/25 shrink-0">
                       <MapPin className="h-4 w-4 text-primary" />
                     </span>
-                    <span className="text-muted-foreground">
-                      Plot 8, Port Elizabeth Street, Off Nairobi Street, Wuse II,
-                      Abuja, Nigeria
+                    <span className="text-muted-foreground leading-6">
+                      <span className="block sm:inline">Plot 8 Port Elizabeth Street, Off Nirobi Street</span>
+                      <span className="hidden sm:inline"> </span>
+                      <span className="block sm:inline">Wuse II FCT, Abuja Nigeria</span>
                     </span>
                   </li>
                 </ul>

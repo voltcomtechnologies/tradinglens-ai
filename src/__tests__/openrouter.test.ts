@@ -77,7 +77,7 @@ describe("buildTradingSystemPrompt", () => {
 
   it("includes the base system instructions", () => {
     const prompt = buildTradingSystemPrompt("analyze", "EURUSD", "1D");
-    expect(prompt).toContain("expert forex");
+    expect(prompt).toContain("expert asset classes");
     expect(prompt).toContain("TradingLens AI");
   });
 

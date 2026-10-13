@@ -564,7 +564,7 @@ export function TradingScanner({
                   {isDragActive ? "Drop chart image here" : "Upload chart image"}
                 </h4>
                 <p className="text-sm text-muted-foreground text-center max-w-md">
-                  Drag & drop a forex chart image, or click to browse. Supports PNG, JPG, WEBP up to 10MB.
+                  Drag & drop an asset classes chart image, or click to browse. Supports PNG, JPG, WEBP up to 10MB.
                 </p>
               </div>
             ) : (

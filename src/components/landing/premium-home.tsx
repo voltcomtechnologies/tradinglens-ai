@@ -635,7 +635,7 @@ function Hero() {
 // PROOF BAND
 // ──────────────────────────────────────────────────────────
 function ProofBand() {
-  const logos = ["GLOBAL GATE", "TRUSTPILOT ★ 4.9/5", "TRADINGVIEW", "FOREX FACTORY", "MARKETWATCH", "INVESTING.COM", "BLOOMBERG GRADE"];
+  const logos = ["GLOBAL GATE", "TRUSTPILOT ★ 4.9/5", "TRADINGVIEW", "ASSET CLASSES FACTORY", "MARKETWATCH", "INVESTING.COM", "BLOOMBERG GRADE"];
   return (
     <section className="border-y border-white/[0.06] bg-[#070e24]/80 backdrop-blur">
       <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
@@ -685,8 +685,8 @@ const lenses = [
     n: "01",
     name: "TraderLens",
     tag: "Your AI trading co-pilot",
-    desc: "TraderLens simplifies trading, forex analysis, and stock market insights using real-time AI-powered chart breakdowns.",
-    bullets: ["Real-time chart breakdowns", "Trade signals with reasoning", "Forex & stock insights"],
+    desc: "TraderLens simplifies trading, asset classes analysis, and stock market insights using real-time AI-powered chart breakdowns.",
+    bullets: ["Real-time chart breakdowns", "Trade signals with reasoning", "Asset classes & stock insights"],
     icon: BrainCircuit,
     href: "/lens/trading",
     grad: "from-primary/15 via-primary/[0.04] to-transparent",
@@ -1129,7 +1129,7 @@ function Highlights() {
 const testimonials = [
   { name: "James Okafor", role: "Day Trader, Lagos", text: "TradingLens completely changed how I approach the markets. The AI analysis is incredibly accurate and has improved my win rate by 40%.", initials: "JO" },
   { name: "Sarah Kimani", role: "Swing Trader, Nairobi", text: "The Chart Lens feature is like having a Bloomberg terminal. I wake up to fresh analysis every morning. Worth every penny.", initials: "SK" },
-  { name: "Michael Adeyemi", role: "Forex Educator, Accra", text: "Edu Lens transformed how I teach my students. The AI tutor adapts to each learner's pace. My students love it.", initials: "MA" },
+  { name: "Michael Adeyemi", role: "Asset Classes Educator, Accra", text: "Edu Lens transformed how I teach my students. The AI tutor adapts to each learner's pace. My students love it.", initials: "MA" },
   { name: "Amara Nwosu", role: "Funded Trader", text: "Passed the 2-step challenge in three weeks. The AI risk breakdowns kept me disciplined — drawdown rules are burned into how I trade now.", initials: "AN" },
   { name: "David Mensah", role: "Scalper, London", text: "No guesswork, just clarity. TraderLens shows its reasoning — the patterns, the timeframes, the risk. That transparency sold me.", initials: "DM" },
   { name: "Chioma Eze", role: "Part-time Trader, Abuja", text: "I have a full-time job, so the live sessions are gold. I watch how a pro handles volatility in real time and apply it the next morning.", initials: "CE" },
@@ -1195,7 +1195,7 @@ function TestimonialsSection() {
 const faqs = [
   { q: "Is TradingLens AI beginner-friendly?", a: "Absolutely. EduLens was built around real questions beginners ask — not reverse-engineered from a textbook. You get step-by-step lessons from fundamentals to advanced strategy, while TraderLens explains every analysis in plain language." },
   { q: "Does the AI give entry and exit points?", a: "Yes — with full transparency. TraderLens shows the reasoning: technical patterns identified, timeframes analyzed, and risk levels factored in. Clear entry, stop, and take-profit zones, never a black box." },
-  { q: "Do you cover forex, crypto and stocks?", a: "TraderLens covers forex, metals, indices and stock insights with real-time AI chart breakdowns. ChartLens streams live analysis across 16 major FX pairs and metals, 24/7." },
+  { q: "Do you cover asset classes, crypto and stocks?", a: "TraderLens covers asset classes, metals, indices and stock insights with real-time AI chart breakdowns. ChartLens streams live analysis across 16 major FX pairs and metals, 24/7." },
   { q: "Is there a refund policy?", a: "All challenge fees are fully refundable once you complete the track successfully. Subscriptions start with a 7-day free trial — no card required — cancel anytime." },
   { q: "Is customer support available?", a: "24/7 via live chat, email at info@tradinglensai.com, and WhatsApp. Business hours line: Mon–Fri, 9am–5pm WAT. Average first response under 4 minutes." },
 ];
@@ -1221,8 +1221,8 @@ function FAQSection() {
                   <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
                     <Phone className="h-4 w-4" />
                   </span>
-                  <a href="tel:+2347055555676" className="text-white hover:text-primary transition-colors">
-                    +234 705 555 5676
+                  <a href="tel:09055555898" className="text-white hover:text-primary transition-colors">
+                    09055555898
                   </a>
                 </li>
                 <li className="flex items-center gap-3">
@@ -1237,7 +1237,11 @@ function FAQSection() {
                   <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary shrink-0">
                     <MapPin className="h-4 w-4" />
                   </span>
-                  <span className="text-white/60 text-sm leading-6">Plot 8, Port Elizabeth Street, Off Nairobi Street, Wuse II, Abuja, Nigeria</span>
+                  <span className="text-white/60 text-sm leading-6">
+                    <span className="block sm:inline">Plot 8 Port Elizabeth Street, Off Nirobi Street</span>
+                    <span className="hidden sm:inline"> </span>
+                    <span className="block sm:inline">Wuse II FCT, Abuja Nigeria</span>
+                  </span>
                 </li>
               </ul>
               <Link href="/contact" className="mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:gap-2.5 transition-all">

@@ -257,7 +257,7 @@ export function ChartInsightPanel({
           <p className="text-xs text-muted-foreground">
             {enabled
               ? "Waiting for the next candle update to narrate…"
-              : "Click Enable to start the narrator. It will comment on the in-focus chart, refresh on currency change, and speak top-of-the-hour forex headlines."}
+              : "Click Enable to start the narrator. It will comment on the in-focus chart, refresh on currency change, and speak top-of-the-hour asset classes headlines."}
           </p>
         )}
       </div>

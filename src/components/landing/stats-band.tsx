@@ -61,7 +61,7 @@ const featuredIn = [
   "Trustpilot — Best Rated",
   "Bloomberg Terminal Grade",
   "TradingView Community",
-  "Forex Factory",
+  "Asset Classes Factory",
   "Investing.com",
   "Global Gate Management",
   "Yahoo Finance",

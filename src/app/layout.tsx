@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   description:
     "TradingLens AI helps you analyze the market, learn proven strategies, and make confident trading decisions — all in one intelligent platform.",
   keywords: [
-    "forex",
+    "asset classes",
     "trading",
     "AI",
     "market analysis",

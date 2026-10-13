@@ -20,7 +20,7 @@ const testimonials = [
   },
   {
     name: "Michael Adeyemi",
-    role: "Forex Educator, Accra",
+    role: "Asset Classes Educator, Accra",
     content:
       "Edu Lens transformed how I teach my students. The AI tutor adapts to each learner's pace. My students love it.",
     initials: "MA",

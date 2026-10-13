@@ -95,7 +95,7 @@ export function buildTradingSystemPrompt(
   pair: string,
   timeframe: string
 ): string {
-  const basePrompt = `You are an expert forex and financial markets analyst for TradingLens AI, a professional trading intelligence platform. You have deep knowledge of technical analysis, fundamental analysis, price action, smart money concepts (SMC/ICT), order blocks, fair value gaps, and market structure.
+  const basePrompt = `You are an expert asset classes and financial markets analyst for TradingLens AI, a professional trading intelligence platform. You have deep knowledge of technical analysis, fundamental analysis, price action, smart money concepts (SMC/ICT), order blocks, fair value gaps, and market structure.
 
 Current context:
 - Trading pair: ${pair}

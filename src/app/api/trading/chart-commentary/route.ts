@@ -110,7 +110,7 @@ export async function POST(req: Request) {
       .map((h) => `- [${h.source || "Global Wire"}] ${h.title}`)
       .join("\n");
 
-    const systemPrompt = `You are an elite institutional forex desk strategist and live global trading floor commentator for TradingLens AI.
+    const systemPrompt = `You are an elite institutional asset classes desk strategist and live global trading floor commentator for TradingLens AI.
 You synthesize intelligence gathered from all across the world on ${symbol}:
 
 1. FINANCIAL MEDIA & TERMINAL WIRES (Bloomberg, Reuters, Financial Times, central banks):

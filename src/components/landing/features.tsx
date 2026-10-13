@@ -12,8 +12,8 @@ const lenses = [
     name: "TraderLens",
     tagline: "Your AI trading co-pilot",
     description:
-      "TraderLens simplifies trading, forex analysis, and stock market insights using real-time AI-powered chart breakdowns.",
-    points: ["Real-time chart breakdowns", "Trade signals with reasoning", "Forex & stock insights"],
+      "TraderLens simplifies trading, asset classes analysis, and stock market insights using real-time AI-powered chart breakdowns.",
+    points: ["Real-time chart breakdowns", "Trade signals with reasoning", "Asset classes & stock insights"],
     href: "/lens/trading",
     hue: "from-orange-500/25 via-primary/10 to-transparent",
     iconColor: "text-primary",
